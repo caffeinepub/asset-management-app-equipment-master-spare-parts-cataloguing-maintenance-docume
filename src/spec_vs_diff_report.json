@@ -1,0 +1,38 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-10T05:17:16.002Z",
+  "summary": "Diff adds frontend edit/delete UI controls across Equipment, Spare Parts, Maintenance, Cataloguing, and Documents pages, introduces a reusable ConfirmDialog, and extends React Query hooks with update/delete mutations and invalidations. Backend main.mo is modified but the provided snippet is truncated before any new update/delete methods can be confirmed.",
+  "missing_requirements": [],
+  "hallucinated_features": [
+    {
+      "description": "Added URL parameter/sessionStorage utilities for persisting and clearing URL parameters (including hash-routing support), which are not part of the requested edit/delete asset management functionality.",
+      "reason": "BuildRequest does not mention adding URL parameter parsing/persistence utilities; it focuses on CRUD mutations and UI controls for asset records.",
+      "evidence": [
+        "frontend/src/utils/urlParams.ts"
+      ]
+    },
+    {
+      "description": "Actor initialization flow now reads a secret admin token from URL parameters and calls a backend access-control initialization method, plus it invalidates/refetches nearly all React Query queries when the actor changes.",
+      "reason": "BuildRequest constraints/non-goals do not request admin-token URL handling or broad query invalidation/refetch behavior tied to actor recreation; the request is specifically about adding edit/delete operations and targeted invalidation for affected lists.",
+      "evidence": [
+        "frontend/src/hooks/useActor.ts"
+      ]
+    }
+  ],
+  "confidence": 0.56,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/ConfirmDialog.tsx",
+    "frontend/src/hooks/useActor.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/CataloguingPage.tsx",
+    "frontend/src/pages/DocumentsPage.tsx",
+    "frontend/src/pages/EquipmentListPage.tsx",
+    "frontend/src/pages/MaintenancePage.tsx",
+    "frontend/src/pages/SparePartsPage.tsx",
+    "frontend/src/utils/urlParams.ts",
+    "project_state.json"
+  ]
+}

@@ -1,0 +1,226 @@
+{
+  "kind": "build_request",
+  "title": "Add Edit and Delete options for asset management records",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Add backend update and delete operations for Equipment records, including an update method that modifies an existing equipment item by equipmentNumber and a delete method that removes an equipment item by equipmentNumber.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend exposes an updateEquipment(...) method that returns a success indicator (e.g., Bool or ?Equipment) when an equipmentNumber exists and a failure indicator when it does not.",
+        "Backend exposes a deleteEquipment(equipmentNumber) method that returns a success indicator when deletion occurs and a failure indicator when the equipmentNumber does not exist.",
+        "After deleting an equipment item, related data keyed by that equipmentNumber (spare parts, cataloguing records, maintenance records, documents) is also removed so that future queries return empty arrays for that equipmentNumber."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add backend update and delete operations for Spare Part records, allowing modification and removal of a spare part using partNumber (and any other identifiers needed to uniquely locate the spare part in current storage).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend exposes updateSparePart(...) that updates an existing spare part and returns a success indicator; it fails gracefully if the partNumber is not found.",
+        "Backend exposes deleteSparePart(partNumber) (or deleteSparePart(equipmentNumber, partNumber) if required by current storage) that removes the spare part and returns a success indicator.",
+        "getSparePartsByEquipment reflects the updated/deleted spare part after the mutation."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add backend update and delete operations for Maintenance records, allowing modification and removal by maintenanceId.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend exposes updateMaintenanceRecord(...) that updates an existing maintenance record identified by maintenanceId and returns a success indicator; it fails gracefully if not found.",
+        "Backend exposes deleteMaintenanceRecord(maintenanceId) that removes the record and returns a success indicator.",
+        "getMaintenanceByEquipment reflects the updated/deleted record after the mutation.",
+        "getMaintenanceDueReport reflects changes if a record’s status is updated or deleted."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add backend update and delete operations for Cataloguing records, enabling editing and deletion of a specific existing cataloguing record for an equipment item (using a stable identifier available in the current model, such as list index for that equipmentNumber).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend exposes updateCataloguingRecord(equipmentNumber, recordIndex, ...) (or equivalent) and returns a success indicator; it fails gracefully if the equipmentNumber or index is invalid.",
+        "Backend exposes deleteCataloguingRecord(equipmentNumber, recordIndex) (or equivalent) and returns a success indicator; it fails gracefully if invalid.",
+        "getCataloguingRecordsByEquipment reflects the updated/deleted record after the mutation."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add backend update and delete operations for Document records, enabling at minimum deletion of a document by docId; optionally allow editing document metadata (documentType) by docId without re-uploading the file.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend exposes deleteDocument(docId) that removes a document and returns a success indicator; it fails gracefully if docId is not found.",
+        "If documentType editing is implemented: backend exposes updateDocumentType(docId, documentType) (or equivalent) and returns a success indicator.",
+        "getDocumentsByEquipment reflects the updated/deleted document after the mutation."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Extend frontend React Query hooks in frontend/src/hooks/useQueries.ts to include mutations for the new update/delete backend methods (equipment, spare parts, maintenance, cataloguing, documents) and ensure appropriate query invalidation so lists refresh after edits/deletes.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "New hooks exist for update and delete operations for each record type supported (at minimum: Equipment, SparePart, MaintenanceRecord, CataloguingRecord, Document delete).",
+        "On success, hooks invalidate the same query keys currently used for the affected lists (e.g., ['equipment'], ['equipment-list'], ['spare-parts', equipmentNumber], ['maintenance', equipmentNumber], ['cataloguing', equipmentNumber], ['documents', equipmentNumber], and report queries where applicable).",
+        "On error, UI can display an error message via existing toast patterns without crashing."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Add Edit and Delete controls in the Equipment List UI (frontend/src/pages/EquipmentListPage.tsx) so users can edit or delete an equipment item directly from the list, including a confirmation step before deletion.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Equipment list table includes an Actions column with Edit and Delete actions per row.",
+        "Delete action prompts for confirmation (e.g., dialog) and on confirm deletes the equipment item and refreshes the list.",
+        "Edit action opens an edit flow (inline dialog or navigation to an edit form) where the user can modify equipment fields and save changes; on success, the list updates to show the new values.",
+        "All user-facing labels and messages are in English."
+      ]
+    },
+    {
+      "id": "REQ-8",
+      "text": "Add Edit and Delete controls for Spare Parts in frontend/src/pages/SparePartsPage.tsx for the “View Spare Parts by Equipment” table, including a confirmation step before deletion and a way to modify the spare part fields (name, description, quantity, supplier).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each spare part row shows Edit and Delete actions.",
+        "Edit allows changing the spare part fields and saving updates via the new mutation; table refreshes after save.",
+        "Delete prompts for confirmation and removes the spare part; table refreshes after delete.",
+        "Success and error feedback uses the existing toast pattern and English messages."
+      ]
+    },
+    {
+      "id": "REQ-9",
+      "text": "Add Edit and Delete controls for Maintenance records in frontend/src/pages/MaintenancePage.tsx for the “View Maintenance Records” table, including a confirmation step before deletion and a way to modify maintenanceType, status, lastMaintenanceDate, and nextMaintenanceDate.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each maintenance record row shows Edit and Delete actions.",
+        "Edit supports updating fields and saving via mutation; table refreshes after save, and badge/status display reflects updates.",
+        "Delete prompts for confirmation and removes the record; table refreshes after delete.",
+        "English-only UI text for actions and toasts."
+      ]
+    },
+    {
+      "id": "REQ-10",
+      "text": "Add Edit and Delete controls for Cataloguing records in frontend/src/pages/CataloguingPage.tsx within the “Existing Records” list, enabling loading a selected record into the form for editing and allowing deletion with confirmation.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each existing cataloguing record entry displays Edit and Delete actions.",
+        "Edit loads the selected record’s values into the form (materialDescription, templateName, attributeValues, and status) and saving updates the existing record rather than creating a new one.",
+        "Delete prompts for confirmation and removes the selected record; the “Existing Records” list refreshes after deletion.",
+        "English-only UI text for actions and toasts."
+      ]
+    },
+    {
+      "id": "REQ-11",
+      "text": "Add Delete controls for Documents in frontend/src/pages/DocumentsPage.tsx in the “View Documents by Equipment” table, with a confirmation step before deletion; if documentType editing is implemented on the backend, also provide an Edit action to change documentType.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "I NEED EDIT DELETE OPTIONS ALSO"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Documents table includes a Delete action per row with confirmation and removal via mutation; list refreshes after deletion.",
+        "Download action continues to work as-is.",
+        "If documentType editing is included, the UI provides an Edit action to update documentType and reflects the change in the table after saving.",
+        "All user-facing labels and messages are in English."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single Motoko actor with logic in backend/main.mo; only add backend/migration.mo if an upgrade of persisted stable state is required.",
+    "Do not edit files under frontend/src/components/ui or any paths listed in frontend.immutablePaths; compose existing UI components instead.",
+    "Use React Query for server state updates and ensure query invalidation keeps UI consistent."
+  ],
+  "nonGoals": [
+    "Adding new authentication providers beyond Internet Identity.",
+    "Adding external databases or non-Motoko backend services.",
+    "Introducing real-time updates (WebSockets, push notifications).",
+    "Redesigning unrelated pages or adding new modules not required for edit/delete functionality."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

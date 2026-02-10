@@ -1,0 +1,146 @@
+{
+  "kind": "coverage_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-10T05:17:16.005Z",
+  "sources": {
+    "buildRequest": true,
+    "implementationPlan": true
+  },
+  "requirements": {
+    "total": 11,
+    "implemented": 6,
+    "items": [
+      {
+        "id": "REQ-1",
+        "summary": "Add backend update and delete operations for Equipment records, including an update method that modifies an existing equipment item by equipmentNumber and a delete method that removes an equipment item by equipmentNumber.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-10",
+        "summary": "Add Edit and Delete controls for Cataloguing records in frontend/src/pages/CataloguingPage.tsx within the “Existing Records” list, enabling loading a selected record into the form for editing and allowing deletion with confirmation.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/CataloguingPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/CataloguingPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-11",
+        "summary": "Add Delete controls for Documents in frontend/src/pages/DocumentsPage.tsx in the “View Documents by Equipment” table, with a confirmation step before deletion; if documentType editing is implemented on the backend, also provide an Edit action to change documentType.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/DocumentsPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/DocumentsPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Add backend update and delete operations for Spare Part records, allowing modification and removal of a spare part using partNumber (and any other identifiers needed to uniquely locate the spare part in current storage).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Add backend update and delete operations for Maintenance records, allowing modification and removal by maintenanceId.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add backend update and delete operations for Cataloguing records, enabling editing and deletion of a specific existing cataloguing record for an equipment item (using a stable identifier available in the current model, such as list index for that equipmentNumber).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Add backend update and delete operations for Document records, enabling at minimum deletion of a document by docId; optionally allow editing document metadata (documentType) by docId without re-uploading the file.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Extend frontend React Query hooks in frontend/src/hooks/useQueries.ts to include mutations for the new update/delete backend methods (equipment, spare parts, maintenance, cataloguing, documents) and ensure appropriate query invalidation so lists refresh after edits/deletes.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Add Edit and Delete controls in the Equipment List UI (frontend/src/pages/EquipmentListPage.tsx) so users can edit or delete an equipment item directly from the list, including a confirmation step before deletion.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/components/ConfirmDialog.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/components/ConfirmDialog.tsx"
+        ]
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Add Edit and Delete controls for Spare Parts in frontend/src/pages/SparePartsPage.tsx for the “View Spare Parts by Equipment” table, including a confirmation step before deletion and a way to modify the spare part fields (name, description, quantity, supplier).",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/SparePartsPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/SparePartsPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-9",
+        "summary": "Add Edit and Delete controls for Maintenance records in frontend/src/pages/MaintenancePage.tsx for the “View Maintenance Records” table, including a confirmation step before deletion and a way to modify maintenanceType, status, lastMaintenanceDate, and nextMaintenanceDate.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/MaintenancePage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/MaintenancePage.tsx"
+        ]
+      }
+    ]
+  },
+  "changedFiles": [
+    "backend/authorization/MixinAuthorization.mo",
+    "backend/authorization/access-control.mo",
+    "backend/main.mo",
+    "build-request.json",
+    "build-template/README.md",
+    "caffeine.lock.json",
+    "feature_evidence.json",
+    "frontend-file-summaries.txt",
+    "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/ConfirmDialog.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useActor.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/pages/CataloguingPage.tsx",
+    "frontend/src/pages/DocumentsPage.tsx",
+    "frontend/src/pages/EquipmentListPage.tsx",
+    "frontend/src/pages/MaintenancePage.tsx",
+    "frontend/src/pages/SparePartsPage.tsx",
+    "frontend/src/utils/urlParams.ts",
+    "project_state.json",
+    "scratch/component-selection.json",
+    "spec.md",
+    "spec_vs_diff_report.json"
+  ]
+}
