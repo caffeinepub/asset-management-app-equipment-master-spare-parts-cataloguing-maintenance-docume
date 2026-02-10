@@ -7,20 +7,19 @@ import Iter "mo:core/Iter";
 import Array "mo:core/Array";
 import File "blob-storage/Storage";
 import Time "mo:core/Time";
-import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+import Principal "mo:core/Principal";
+import Runtime "mo:core/Runtime";
 
 actor {
   include MixinStorage();
 
-  // Initialize the access control system
+  // Access control system (persistent state)
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  // Type Definitions
   public type UserProfile = {
     name : Text;
     department : Text;
@@ -83,7 +82,6 @@ actor {
     filePath : File.ExternalBlob;
   };
 
-  // State
   var nextEquipmentNumber : Nat = 1;
   var nextPartNumber : Nat = 1;
   var nextMaintenanceId : Nat = 1;

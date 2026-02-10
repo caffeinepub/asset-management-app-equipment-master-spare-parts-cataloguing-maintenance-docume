@@ -1,6 +1,6 @@
 {
-  "frontend/src/App.tsx": "Main application component with TanStack Router setup, defining all routes (Equipment Master, Equipment List, Spare Parts, Cataloguing, Maintenance, Documents, Reports) and wrapping the app with ThemeProvider and Toaster for notifications.",
-  "frontend/src/pages/EquipmentMasterPage.tsx": "Equipment Master screen with form for creating equipment records (name, model, serial number, manufacturer, location, dates) and quick action buttons to navigate to Spare Parts, Cataloguing, Maintenance, Documents, and Reports screens.",
+  "frontend/src/App.tsx": "Main application component with TanStack Router setup defining all routes and wrapping the app with ThemeProvider and Toaster for notifications.",
+  "frontend/src/pages/EquipmentMasterPage.tsx": "Equipment Master form that checks authentication status, disables form when user is not signed in, shows clear authentication alerts, and displays specific error messages with sign-in prompts when mutations fail.",
   "frontend/src/pages/EquipmentListPage.tsx": "Equipment list page displaying all equipment records in a table with edit and delete actions per row, including edit dialog for updating equipment details and delete confirmation.",
   "frontend/src/pages/SparePartsPage.tsx": "Spare parts management page with create form and view table, including edit and delete actions for each spare part with dialogs for updating details and confirming deletion.",
   "frontend/src/pages/CataloguingPage.tsx": "Cataloguing page with template-based attribute forms, edit mode that loads existing records into the form for updates, and delete confirmation for cataloguing records.",
@@ -10,12 +10,15 @@
   "frontend/src/components/PageLayout.tsx": "Shared page layout component providing consistent header with app title, main content area, and footer with attribution link to caffeine.ai.",
   "frontend/src/components/forms/FormField.tsx": "Reusable form field wrapper component providing consistent label styling, required indicator, help text, and error message display for all forms.",
   "frontend/src/components/EquipmentLookup.tsx": "Reusable equipment lookup dropdown component that fetches all equipment records and displays them as selectable options with equipment number and name.",
-  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations including equipment, spare parts, cataloguing, maintenance, and documents with full CRUD support (create, read, update, delete) and proper cache invalidation.",
+  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations with proper cache invalidation and refetching to ensure UI updates after mutations.",
   "frontend/src/lib/dates.ts": "Date utility functions for converting between backend Time (bigint nanoseconds) and JavaScript Date objects, plus formatting dates for display.",
   "frontend/src/lib/cataloguingTemplates.ts": "Client-side cataloguing template definitions for mechanical, electrical, instrumentation, and piping equipment with dynamic attribute fields (text, number, select inputs).",
   "frontend/src/lib/exports.ts": "Export utility functions for generating CSV and PDF files client-side from report data without external services.",
   "frontend/src/lib/validation.ts": "Form validation helper functions for required fields, numbers, and email addresses with error message generation.",
   "frontend/src/index.css": "Global styles with OKLCH color system using warm earth tones (browns/ambers at hue 25) for primary palette, avoiding blue/purple, with proper light and dark mode support.",
   "frontend/tailwind.config.js": "Tailwind configuration with custom color tokens, Inter font family, custom border radius, and extended utilities for the asset management application design system.",
-  "frontend/src/components/ConfirmDialog.tsx": "Reusable confirmation dialog component built with shadcn AlertDialog for delete confirmations with customizable title, description, and action buttons."
+  "frontend/src/components/ConfirmDialog.tsx": "Reusable confirmation dialog component built with shadcn AlertDialog for delete confirmations with customizable title, description, and action buttons.",
+  "frontend/src/hooks/useActor.ts": "Actor initialization hook that only attempts access-control initialization when an admin token is present, exposes initialization errors and retry functionality, and properly invalidates queries on identity changes.",
+  "frontend/src/lib/errors.ts": "Error normalization utility that extracts user-friendly messages from backend trap errors, detects unauthorized/authentication errors, and provides helper functions for error handling.",
+  "frontend/src/components/AccessControlInitBanner.tsx": "Banner component that displays access-control initialization errors with retry and re-authentication options."
 }

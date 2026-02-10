@@ -1,111 +1,78 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Frontend edit/delete UI for asset management records",
+  "title": "Fix equipment creation auth/init failures and surface actionable UI errors",
   "requirements": [
     {
-      "id": "REQ-6",
-      "summary": "Extend React Query hooks to support update/delete mutations and invalidate affected queries.",
+      "id": "REQ-1",
+      "summary": "Ensure authenticated users can create equipment successfully by preventing access-control initialization failures from breaking actor usage and by ensuring equipment lists update after creation.",
       "acceptanceCriteria": [
-        "New hooks exist for update and delete operations for each record type supported (at minimum: Equipment, SparePart, MaintenanceRecord, CataloguingRecord, Document delete).",
-        "On success, hooks invalidate the same query keys currently used for the affected lists (e.g., ['equipment'], ['equipment-list'], ['spare-parts', equipmentNumber], ['maintenance', equipmentNumber], ['cataloguing', equipmentNumber], ['documents', equipmentNumber], and report queries where applicable).",
-        "On error, UI can display an error message via existing toast patterns without crashing."
+        "When a user is authenticated with Internet Identity, submitting the Equipment Master form successfully creates an equipment record and returns a new equipmentNumber.",
+        "The equipment record appears in the Equipment List after creation (without requiring a hard refresh).",
+        "Creating equipment does not fail due to missing/incorrect access-control initialization for normal authenticated users.",
+        "Anonymous (not signed-in) users cannot create equipment and receive a clear, non-generic error message in the UI (see REQ-2)."
       ],
       "file_operations": [
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Adjust actor creation so access-control initialization (authorization component initialization via the actor’s access-control init call) is non-blocking for normal authenticated users (e.g., only attempt secret-based initialization when a secret is present and/or capture failures instead of breaking actor availability). Expose an actor initialization status/error for UI consumption. Verify the component's usage instructions before implementing."
+        },
         {
           "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add React Query mutations for update/delete across Equipment, SparePart, MaintenanceRecord, CataloguingRecord, and Document operations using the existing actor integration; ensure each mutation invalidates the relevant query keys (including report queries like spare-parts-report and maintenance-due) and supports passing error messages to existing toast usage."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Add per-row Edit/Delete actions to the Equipment List with confirmation and an edit form flow.",
-      "acceptanceCriteria": [
-        "Equipment list table includes an Actions column with Edit and Delete actions per row.",
-        "Delete action prompts for confirmation (e.g., dialog) and on confirm deletes the equipment item and refreshes the list.",
-        "Edit action opens an edit flow (inline dialog or navigation to an edit form) where the user can modify equipment fields and save changes; on success, the list updates to show the new values.",
-        "All user-facing labels and messages are in English."
-      ],
-      "file_operations": [
+          "description": "Harden equipment creation mutation behavior to ensure the equipment list queries are refreshed after successful creation (invalidate + refetch relevant queries so the list updates without a hard refresh) and propagate underlying errors upward so the UI can display specific messages."
+        },
         {
           "path": "frontend/src/pages/EquipmentListPage.tsx",
           "operation": "modify",
-          "description": "Add an Actions column to the equipment table with Edit and Delete controls; implement an Edit dialog/form prefilled from the row and wired to the new updateEquipment mutation; implement a Delete confirmation dialog wired to deleteEquipment; show success/error feedback via the existing toast pattern; refresh UI via React Query invalidation. Use shadcn-ui dialog/alert-dialog primitives by composing existing UI components (verify the component's usage instructions before implementing)."
+          "description": "Ensure the Equipment List view reacts to refreshed query data after creation (no hard refresh needed) and optionally display a lightweight loading/refresh state when the underlying equipment query refetches."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Improve equipment creation error handling to show the real underlying error and guide users to sign in when unauthenticated/unauthorized.",
+      "acceptanceCriteria": [
+        "If createEquipment fails, the UI displays an error toast that includes a specific reason when available (e.g., \"Unauthorized: Only users can create equipment\").",
+        "If the user is not authenticated (anonymous actor), the Equipment Master page prevents submission and displays a clear English message indicating the user must sign in to save equipment.",
+        "The existing success toast and form reset behavior remains unchanged on successful creation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/errors.ts",
+          "operation": "create",
+          "description": "Add a small utility to normalize/parse errors from backend calls into a user-friendly English message (e.g., extracting trap messages / unauthorized text) so toasts can display specific reasons."
         },
         {
-          "path": "frontend/src/components/ConfirmDialog.tsx",
+          "path": "frontend/src/pages/EquipmentMasterPage.tsx",
+          "operation": "modify",
+          "description": "Use Internet Identity state (via existing auth context) to prevent submission when the user is not signed in, showing a clear English message near the submit action. On mutation failure, use the shared error-normalization utility to show a specific toast message (and include sign-in guidance when the message indicates authentication/authorization). Keep the existing success toast and form reset behavior unchanged on success."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Surface access-control initialization failures to the UI and ensure actor refresh/recovery after login/logout so mutations don’t use a stale or incorrectly initialized actor.",
+      "acceptanceCriteria": [
+        "If the call that initializes access control during actor creation fails, the app shows a user-facing English error indicating initialization failed and prompts the user to retry/login again.",
+        "After login/logout, queries and mutations use the correct actor for the current identity (no stale actor causing authorization failures)."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Return additional state from useActor (e.g., initializationError and a retry method that resets the actor query) and ensure identity changes reliably recreate the actor and invalidate/refetch dependent queries without leaving a stale actor in place."
+        },
+        {
+          "path": "frontend/src/components/AccessControlInitBanner.tsx",
           "operation": "create",
-          "description": "Create a small reusable confirmation dialog component (e.g., for Delete confirmations) composed from existing shadcn-ui alert-dialog primitives without modifying frontend/src/components/ui; use it from list/table pages to standardize confirmation copy and callbacks (verify the component's usage instructions before implementing)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-8",
-      "summary": "Add per-row Edit/Delete actions for Spare Parts with confirmation and editable fields.",
-      "acceptanceCriteria": [
-        "Each spare part row shows Edit and Delete actions.",
-        "Edit allows changing the spare part fields and saving updates via the new mutation; table refreshes after save.",
-        "Delete prompts for confirmation and removes the spare part; table refreshes after delete.",
-        "Success and error feedback uses the existing toast pattern and English messages."
-      ],
-      "file_operations": [
+          "description": "Create a small UI component that reads useActor initialization status and, when initialization fails, renders an English error message with a retry/login-again prompt. (Uses existing UI patterns; shadcn-ui can be used for consistent styling. Verify the component's usage instructions before implementing.)"
+        },
         {
-          "path": "frontend/src/pages/SparePartsPage.tsx",
+          "path": "frontend/src/App.tsx",
           "operation": "modify",
-          "description": "Extend the “View Spare Parts by Equipment” table to include an Actions column with Edit/Delete; implement an Edit dialog that allows updating name, description, quantity, and supplier for the selected row and calls updateSparePart with the current equipmentNumber; implement Delete confirmation calling deleteSparePart; use existing toast pattern for English success/error messages and rely on query invalidation for refresh. Use the shared ConfirmDialog component and shadcn-ui dialog primitives by composing existing UI components (verify the component's usage instructions before implementing)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-9",
-      "summary": "Add per-row Edit/Delete actions for Maintenance records with confirmation and editable fields.",
-      "acceptanceCriteria": [
-        "Each maintenance record row shows Edit and Delete actions.",
-        "Edit supports updating fields and saving via mutation; table refreshes after save, and badge/status display reflects updates.",
-        "Delete prompts for confirmation and removes the record; table refreshes after delete.",
-        "English-only UI text for actions and toasts."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/MaintenancePage.tsx",
-          "operation": "modify",
-          "description": "Extend the “View Maintenance Records” table to include an Actions column with Edit/Delete; implement an Edit dialog to update maintenanceType, status, lastMaintenanceDate, and nextMaintenanceDate (convert to bigint timestamps consistently with existing logic) and call updateMaintenanceRecord with the current equipmentNumber and maintenanceId; implement Delete confirmation calling deleteMaintenanceRecord; keep status Badge rendering consistent and refreshed via invalidation (including maintenance-due report where applicable). Use the shared ConfirmDialog and shadcn-ui dialog primitives by composing existing UI components (verify the component's usage instructions before implementing)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-10",
-      "summary": "Enable editing and deletion of existing Cataloguing records by loading into the form and confirming deletion.",
-      "acceptanceCriteria": [
-        "Each existing cataloguing record entry displays Edit and Delete actions.",
-        "Edit loads the selected record’s values into the form (materialDescription, templateName, attributeValues, and status) and saving updates the existing record rather than creating a new one.",
-        "Delete prompts for confirmation and removes the selected record; the “Existing Records” list refreshes after deletion.",
-        "English-only UI text for actions and toasts."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/CataloguingPage.tsx",
-          "operation": "modify",
-          "description": "Add Edit/Delete actions to each entry in “Existing Records”; implement an edit mode that stores the selected record index and loads record values into the form (including mapping record.attributes into attributeValues); when in edit mode, wire Save Draft / Submit to updateCataloguingRecord rather than createCataloguingRecord; add Delete confirmation wired to deleteCataloguingRecord using equipmentNumber and the record’s list index; show English toast feedback and rely on query invalidation to refresh the list. Use the shared ConfirmDialog and shadcn-ui primitives by composing existing UI components (verify the component's usage instructions before implementing)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-11",
-      "summary": "Add per-row Document Delete (and optional documentType Edit) controls with confirmation while keeping download behavior.",
-      "acceptanceCriteria": [
-        "Documents table includes a Delete action per row with confirmation and removal via mutation; list refreshes after deletion.",
-        "Download action continues to work as-is.",
-        "If documentType editing is included, the UI provides an Edit action to update documentType and reflects the change in the table after saving.",
-        "All user-facing labels and messages are in English."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/DocumentsPage.tsx",
-          "operation": "modify",
-          "description": "Extend the documents table to include row actions: keep existing Download behavior (using ExternalBlob direct URL) and add Delete with confirmation calling deleteDocument(equipmentNumber, docId) then refreshing via invalidation; also add an optional Edit action to change documentType using updateDocumentMetadata when available, via a dialog and English toast messages. Continue using blob-storage ExternalBlob direct URL behavior for download/display (verify the component's usage instructions before implementing). Use the shared ConfirmDialog and shadcn-ui dialog primitives by composing existing UI components (verify the component's usage instructions before implementing)."
+          "description": "Wire the new AccessControlInitBanner into the root layout so initialization failures are visible across pages and the app can guide the user to retry or re-authenticate."
         }
       ]
     }

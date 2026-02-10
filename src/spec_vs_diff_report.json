@@ -1,38 +1,36 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T05:17:16.002Z",
-  "summary": "Diff adds frontend edit/delete UI controls across Equipment, Spare Parts, Maintenance, Cataloguing, and Documents pages, introduces a reusable ConfirmDialog, and extends React Query hooks with update/delete mutations and invalidations. Backend main.mo is modified but the provided snippet is truncated before any new update/delete methods can be confirmed.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-10T05:32:41.852Z",
+  "summary": "Diff adds frontend-side error normalization and improved Equipment Master submission/error UX, plus React Query cache invalidation/refetch after equipment creation. Backend createEquipment now traps with a specific \"Unauthorized: Only users can create equipment\" message when caller lacks #user permission, but the diff does not clearly show a backend fix that ensures normal authenticated users are granted the needed permission, nor does it clearly show the actor/access-control initialization hardening requested.",
+  "missing_requirements": [
     {
-      "description": "Added URL parameter/sessionStorage utilities for persisting and clearing URL parameters (including hash-routing support), which are not part of the requested edit/delete asset management functionality.",
-      "reason": "BuildRequest does not mention adding URL parameter parsing/persistence utilities; it focuses on CRUD mutations and UI controls for asset records.",
+      "id": "REQ-1",
+      "requirement": "Fix the root cause of equipment creation failing so an authenticated (Internet Identity) user can successfully create equipment records via backend createEquipment without authorization/access-control initialization errors.",
+      "reason": "backend/main.mo shows an authorization check that traps when the caller lacks #user, but the diff summary does not show any change that initializes/grants #user permissions for normal authenticated users (i.e., the root cause of the authorization failure is not evident from the shown changes). The file is truncated, so this may exist outside the visible portion, but it is not supported by the provided diff summary.",
       "evidence": [
-        "frontend/src/utils/urlParams.ts"
+        "backend/main.mo (truncated)"
       ]
     },
     {
-      "description": "Actor initialization flow now reads a secret admin token from URL parameters and calls a backend access-control initialization method, plus it invalidates/refetches nearly all React Query queries when the actor changes.",
-      "reason": "BuildRequest constraints/non-goals do not request admin-token URL handling or broad query invalidation/refetch behavior tied to actor recreation; the request is specifically about adding edit/delete operations and targeted invalidation for affected lists.",
+      "id": "REQ-3",
+      "requirement": "Harden actor/access-control initialization so failures do not silently break mutations; surface initialization failures to the UI and ensure the app can recover after login/logout changes (no stale actor).",
+      "reason": "A new component (AccessControlInitBanner.tsx) is added, but the diff summary does not show changes to the actor initialization hook or wiring that would (a) detect/handle access-control init failures during actor creation, (b) surface them to the UI, and (c) ensure correct actor refresh after login/logout. The only shown hook changes are in useQueries.ts and do not address actor lifecycle/initialization.",
       "evidence": [
-        "frontend/src/hooks/useActor.ts"
+        "frontend/src/components/AccessControlInitBanner.tsx",
+        "frontend/src/hooks/useQueries.ts (truncated)"
       ]
     }
   ],
-  "confidence": 0.56,
+  "hallucinated_features": [],
+  "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/ConfirmDialog.tsx",
-    "frontend/src/hooks/useActor.ts",
+    "frontend/src/components/AccessControlInitBanner.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/CataloguingPage.tsx",
-    "frontend/src/pages/DocumentsPage.tsx",
-    "frontend/src/pages/EquipmentListPage.tsx",
-    "frontend/src/pages/MaintenancePage.tsx",
-    "frontend/src/pages/SparePartsPage.tsx",
-    "frontend/src/utils/urlParams.ts",
+    "frontend/src/lib/errors.ts",
+    "frontend/src/pages/EquipmentMasterPage.tsx",
     "project_state.json"
   ]
 }

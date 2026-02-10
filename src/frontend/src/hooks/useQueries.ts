@@ -45,7 +45,7 @@ export function useCreateEquipment() {
       warranty: bigint;
     }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.createEquipment(
+      const result = await actor.createEquipment(
         data.name,
         data.location,
         data.manufacturer,
@@ -54,10 +54,15 @@ export function useCreateEquipment() {
         data.purchase,
         data.warranty
       );
+      return result;
     },
     onSuccess: () => {
+      // Invalidate and refetch equipment queries
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
+      // Force refetch to ensure UI updates
+      queryClient.refetchQueries({ queryKey: ['equipment'] });
+      queryClient.refetchQueries({ queryKey: ['equipment-list'] });
     },
   });
 }
@@ -92,6 +97,8 @@ export function useUpdateEquipment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
+      queryClient.refetchQueries({ queryKey: ['equipment'] });
+      queryClient.refetchQueries({ queryKey: ['equipment-list'] });
     },
   });
 }
