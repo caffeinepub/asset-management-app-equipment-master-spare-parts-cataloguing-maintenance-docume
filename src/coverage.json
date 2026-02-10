@@ -1,66 +1,116 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T05:32:41.854Z",
+  "generatedAt": "2026-02-10T12:24:13.451Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
+    "total": 6,
     "implemented": 3,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix the root cause of equipment creation failing so a signed-in user can successfully create equipment records via backend createEquipment without receiving an authorization trap or other error.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/EquipmentListPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts"
-        ]
+        "summary": "Add a persistent \"additionalInformation\" text field to all core record types (Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document) in the Motoko canister, and update all create/update/query methods so this field is stored and returned with each record.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "Improve frontend error handling for equipment creation so the toast shows the real underlying error (e.g., unauthorized vs. other backend traps) instead of always showing only \"Failed to create equipment\", and guide the user to sign in when the error is authentication/authorization related.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/errors.ts",
-          "frontend/src/pages/EquipmentMasterPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/errors.ts",
-          "frontend/src/pages/EquipmentMasterPage.tsx"
-        ]
+        "summary": "Add a persistent \"discipline\" field to Equipment records in the Motoko canister, restricting values to: \"MECHANICAL\", \"ELECTRICAL\", \"INSTRUMENTATION\", \"PIPING\" (and safely handling empty/unknown values for migrated legacy records). Update equipment create/update/query methods accordingly.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Harden actor/access-control initialization so failures in the access-control initialization step do not silently break mutations; surface initialization failures to the UI and ensure the app can recover after login/logout changes.",
+        "summary": "Implement a conditional data migration for existing stable state so legacy records receive default values for the new fields (additionalInformation and discipline). Ensure upgrades do not lose existing data.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/components/AccessControlInitBanner.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/pages/SparePartsPage.tsx",
+          "frontend/src/pages/CataloguingPage.tsx",
+          "frontend/src/pages/MaintenancePage.tsx",
+          "frontend/src/pages/DocumentsPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/AccessControlInitBanner.tsx"
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/pages/SparePartsPage.tsx",
+          "frontend/src/pages/CataloguingPage.tsx",
+          "frontend/src/pages/MaintenancePage.tsx",
+          "frontend/src/pages/DocumentsPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/lib/disciplines.ts",
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/lib/disciplines.ts",
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/pages/SparePartsPage.tsx",
+          "frontend/src/pages/CataloguingPage.tsx",
+          "frontend/src/pages/MaintenancePage.tsx",
+          "frontend/src/pages/DocumentsPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/pages/EquipmentMasterPage.tsx",
+          "frontend/src/pages/EquipmentListPage.tsx",
+          "frontend/src/pages/SparePartsPage.tsx",
+          "frontend/src/pages/CataloguingPage.tsx",
+          "frontend/src/pages/MaintenancePage.tsx",
+          "frontend/src/pages/DocumentsPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/AccessControlInitBanner.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/errors.ts",
+    "frontend/src/lib/disciplines.ts",
+    "frontend/src/pages/CataloguingPage.tsx",
+    "frontend/src/pages/DocumentsPage.tsx",
+    "frontend/src/pages/EquipmentListPage.tsx",
     "frontend/src/pages/EquipmentMasterPage.tsx",
+    "frontend/src/pages/MaintenancePage.tsx",
+    "frontend/src/pages/SparePartsPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

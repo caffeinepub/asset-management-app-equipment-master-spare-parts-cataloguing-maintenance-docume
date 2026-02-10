@@ -89,8 +89,17 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface Document {
+    documentType: string;
+    additionalInformation: string;
+    equipmentNumber: bigint;
+    filePath: ExternalBlob;
+    docId: bigint;
+    uploadDate: Time;
+}
 export interface CataloguingRecord {
     status: Variant_submitted_draft;
+    additionalInformation: string;
     equipmentNumber: bigint;
     templateName: string;
     attributes: Array<[string, string]>;
@@ -102,6 +111,7 @@ export interface _CaffeineStorageRefillInformation {
 }
 export interface MaintenanceRecord {
     maintenanceStatus: Variant_scheduled_completed_overdue;
+    additionalInformation: string;
     equipmentNumber: bigint;
     maintenanceType: string;
     maintenanceId: bigint;
@@ -111,7 +121,9 @@ export interface MaintenanceRecord {
 export interface Equipment {
     model: string;
     manufacturer: string;
+    discipline: EngineeringDiscipline;
     purchaseDate: Time;
+    additionalInformation: string;
     name: string;
     equipmentNumber: bigint;
     serialNumber: string;
@@ -123,19 +135,17 @@ export interface _CaffeineStorageCreateCertificateResult {
     blob_hash: string;
 }
 export interface SparePart {
+    manufacturer: string;
     partNumber: bigint;
     supplier: string;
+    additionalInformation: string;
     name: string;
     equipmentNumber: bigint;
     description: string;
+    modelSerial: string;
     quantity: bigint;
-}
-export interface Document {
-    documentType: string;
-    equipmentNumber: bigint;
-    filePath: ExternalBlob;
-    docId: bigint;
-    uploadDate: Time;
+    attachment?: ExternalBlob;
+    partNo: string;
 }
 export interface UserProfile {
     name: string;
@@ -144,6 +154,13 @@ export interface UserProfile {
 export interface _CaffeineStorageRefillResult {
     success?: boolean;
     topped_up_amount?: bigint;
+}
+export enum EngineeringDiscipline {
+    mechanical = "mechanical",
+    piping = "piping",
+    electrical = "electrical",
+    unknown_ = "unknown",
+    instrumentation = "instrumentation"
 }
 export enum UserRole {
     admin = "admin",
@@ -168,15 +185,19 @@ export interface backendInterface {
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean): Promise<bigint | null>;
-    createEquipment(name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time): Promise<bigint>;
-    createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time): Promise<bigint | null>;
-    createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string): Promise<bigint | null>;
+    createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<bigint | null>;
+    createEquipment(name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<bigint>;
+    createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<bigint | null>;
+    createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<bigint | null>;
     deleteCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint): Promise<boolean>;
     deleteDocument(equipmentNumber: bigint, docId: bigint): Promise<boolean>;
     deleteEquipment(equipmentNumber: bigint): Promise<boolean>;
     deleteMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint): Promise<boolean>;
     deleteSparePart(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
+    findSparePartsByEquipmentTagNumber(equipmentTagNumber: bigint): Promise<Array<SparePart>>;
+    findSparePartsByManufacturer(manufacturer: string): Promise<Array<SparePart>>;
+    findSparePartsByModelSerial(modelSerial: string): Promise<Array<SparePart>>;
+    findSparePartsByPartNo(partNo: string): Promise<Array<SparePart>>;
     getAllEquipment(): Promise<Array<Equipment>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -191,14 +212,14 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean): Promise<boolean>;
-    updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string): Promise<boolean>;
-    updateEquipment(equipmentNumber: bigint, name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time): Promise<boolean>;
-    updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time): Promise<boolean>;
-    updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string): Promise<boolean>;
-    uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob): Promise<bigint | null>;
+    updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<boolean>;
+    updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string, additionalInfo: string): Promise<boolean>;
+    updateEquipment(equipmentNumber: bigint, name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<boolean>;
+    updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<boolean>;
+    updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<boolean>;
+    uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob, additionalInfo: string): Promise<bigint | null>;
 }
-import type { CataloguingRecord as _CataloguingRecord, Document as _Document, Equipment as _Equipment, ExternalBlob as _ExternalBlob, MaintenanceRecord as _MaintenanceRecord, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { CataloguingRecord as _CataloguingRecord, Document as _Document, EngineeringDiscipline as _EngineeringDiscipline, Equipment as _Equipment, ExternalBlob as _ExternalBlob, MaintenanceRecord as _MaintenanceRecord, SparePart as _SparePart, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobIsLive(arg0: Uint8Array): Promise<boolean> {
@@ -313,59 +334,59 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createCataloguingRecord(arg0: bigint, arg1: string, arg2: string, arg3: Array<[string, string]>, arg4: boolean): Promise<bigint | null> {
+    async createCataloguingRecord(arg0: bigint, arg1: string, arg2: string, arg3: Array<[string, string]>, arg4: boolean, arg5: string): Promise<bigint | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.createCataloguingRecord(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor.createCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5);
                 return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createCataloguingRecord(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor.createCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5);
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
-    async createEquipment(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: Time, arg6: Time): Promise<bigint> {
+    async createEquipment(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: Time, arg6: Time, arg7: string, arg8: EngineeringDiscipline): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+                const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg8));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
+            const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg8));
             return result;
         }
     }
-    async createMaintenanceRecord(arg0: bigint, arg1: string, arg2: Variant_scheduled_completed_overdue, arg3: Time, arg4: Time): Promise<bigint | null> {
+    async createMaintenanceRecord(arg0: bigint, arg1: string, arg2: Variant_scheduled_completed_overdue, arg3: Time, arg4: Time, arg5: string): Promise<bigint | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.createMaintenanceRecord(arg0, arg1, to_candid_variant_n10(this._uploadFile, this._downloadFile, arg2), arg3, arg4);
+                const result = await this.actor.createMaintenanceRecord(arg0, arg1, to_candid_variant_n12(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
                 return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createMaintenanceRecord(arg0, arg1, to_candid_variant_n10(this._uploadFile, this._downloadFile, arg2), arg3, arg4);
+            const result = await this.actor.createMaintenanceRecord(arg0, arg1, to_candid_variant_n12(this._uploadFile, this._downloadFile, arg2), arg3, arg4, arg5);
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
-    async createSparePart(arg0: bigint, arg1: string, arg2: string, arg3: bigint, arg4: string): Promise<bigint | null> {
+    async createSparePart(arg0: bigint, arg1: string, arg2: string, arg3: bigint, arg4: string, arg5: string, arg6: string, arg7: string, arg8: ExternalBlob | null, arg9: string): Promise<bigint | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.createSparePart(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor.createSparePart(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, await to_candid_opt_n13(this._uploadFile, this._downloadFile, arg8), arg9);
                 return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createSparePart(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor.createSparePart(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, await to_candid_opt_n13(this._uploadFile, this._downloadFile, arg8), arg9);
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -439,172 +460,228 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async findSparePartsByEquipmentTagNumber(arg0: bigint): Promise<Array<SparePart>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findSparePartsByEquipmentTagNumber(arg0);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findSparePartsByEquipmentTagNumber(arg0);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async findSparePartsByManufacturer(arg0: string): Promise<Array<SparePart>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findSparePartsByManufacturer(arg0);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findSparePartsByManufacturer(arg0);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async findSparePartsByModelSerial(arg0: string): Promise<Array<SparePart>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findSparePartsByModelSerial(arg0);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findSparePartsByModelSerial(arg0);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async findSparePartsByPartNo(arg0: string): Promise<Array<SparePart>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findSparePartsByPartNo(arg0);
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findSparePartsByPartNo(arg0);
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
+        }
+    }
     async getAllEquipment(): Promise<Array<Equipment>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllEquipment();
-                return result;
+                return from_candid_vec_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllEquipment();
-            return result;
+            return from_candid_vec_n20(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n26(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n12(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n26(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCataloguingRecordsByEquipment(arg0: bigint): Promise<Array<CataloguingRecord>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCataloguingRecordsByEquipment(arg0);
-                return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n28(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCataloguingRecordsByEquipment(arg0);
-            return from_candid_vec_n14(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n28(this._uploadFile, this._downloadFile, result);
         }
     }
     async getDocumentsByEquipment(arg0: bigint): Promise<Array<Document>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getDocumentsByEquipment(arg0);
-                return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n32(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getDocumentsByEquipment(arg0);
-            return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n32(this._uploadFile, this._downloadFile, result);
         }
     }
     async getEquipment(arg0: bigint): Promise<Equipment | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getEquipment(arg0);
-                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n35(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getEquipment(arg0);
-            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n35(this._uploadFile, this._downloadFile, result);
         }
     }
     async getEquipmentList(): Promise<Array<Equipment>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getEquipmentList();
-                return result;
+                return from_candid_vec_n20(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getEquipmentList();
-            return result;
+            return from_candid_vec_n20(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMaintenanceByEquipment(arg0: bigint): Promise<Array<MaintenanceRecord>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getMaintenanceByEquipment(arg0);
-                return from_candid_vec_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getMaintenanceByEquipment(arg0);
-            return from_candid_vec_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
         }
     }
     async getMaintenanceDueReport(): Promise<Array<MaintenanceRecord>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getMaintenanceDueReport();
-                return from_candid_vec_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getMaintenanceDueReport();
-            return from_candid_vec_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSparePartsByEquipment(arg0: bigint): Promise<Array<SparePart>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getSparePartsByEquipment(arg0);
-                return result;
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSparePartsByEquipment(arg0);
-            return result;
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSparePartsReport(): Promise<Array<SparePart>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getSparePartsReport();
-                return result;
+                return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSparePartsReport();
-            return result;
+            return from_candid_vec_n15(this._uploadFile, this._downloadFile, result);
         }
     }
     async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
         }
     }
     async isCallerAdmin(): Promise<boolean> {
@@ -635,114 +712,126 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateCataloguingRecord(arg0: bigint, arg1: bigint, arg2: string, arg3: string, arg4: Array<[string, string]>, arg5: boolean): Promise<boolean> {
+    async updateCataloguingRecord(arg0: bigint, arg1: bigint, arg2: string, arg3: string, arg4: Array<[string, string]>, arg5: boolean, arg6: string): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5);
+                const result = await this.actor.updateCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5);
+            const result = await this.actor.updateCataloguingRecord(arg0, arg1, arg2, arg3, arg4, arg5, arg6);
             return result;
         }
     }
-    async updateDocumentMetadata(arg0: bigint, arg1: bigint, arg2: string): Promise<boolean> {
+    async updateDocumentMetadata(arg0: bigint, arg1: bigint, arg2: string, arg3: string): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateDocumentMetadata(arg0, arg1, arg2);
+                const result = await this.actor.updateDocumentMetadata(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateDocumentMetadata(arg0, arg1, arg2);
+            const result = await this.actor.updateDocumentMetadata(arg0, arg1, arg2, arg3);
             return result;
         }
     }
-    async updateEquipment(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: Time, arg7: Time): Promise<boolean> {
+    async updateEquipment(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: Time, arg7: Time, arg8: string, arg9: EngineeringDiscipline): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+                const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+            const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
             return result;
         }
     }
-    async updateMaintenanceRecord(arg0: bigint, arg1: bigint, arg2: string, arg3: Variant_scheduled_completed_overdue, arg4: Time, arg5: Time): Promise<boolean> {
+    async updateMaintenanceRecord(arg0: bigint, arg1: bigint, arg2: string, arg3: Variant_scheduled_completed_overdue, arg4: Time, arg5: Time, arg6: string): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateMaintenanceRecord(arg0, arg1, arg2, to_candid_variant_n10(this._uploadFile, this._downloadFile, arg3), arg4, arg5);
+                const result = await this.actor.updateMaintenanceRecord(arg0, arg1, arg2, to_candid_variant_n12(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateMaintenanceRecord(arg0, arg1, arg2, to_candid_variant_n10(this._uploadFile, this._downloadFile, arg3), arg4, arg5);
+            const result = await this.actor.updateMaintenanceRecord(arg0, arg1, arg2, to_candid_variant_n12(this._uploadFile, this._downloadFile, arg3), arg4, arg5, arg6);
             return result;
         }
     }
-    async updateSparePart(arg0: bigint, arg1: bigint, arg2: string, arg3: string, arg4: bigint, arg5: string): Promise<boolean> {
+    async updateSparePart(arg0: bigint, arg1: bigint, arg2: string, arg3: string, arg4: bigint, arg5: string, arg6: string, arg7: string, arg8: string, arg9: ExternalBlob | null, arg10: string): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateSparePart(arg0, arg1, arg2, arg3, arg4, arg5);
+                const result = await this.actor.updateSparePart(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, await to_candid_opt_n13(this._uploadFile, this._downloadFile, arg9), arg10);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateSparePart(arg0, arg1, arg2, arg3, arg4, arg5);
+            const result = await this.actor.updateSparePart(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, await to_candid_opt_n13(this._uploadFile, this._downloadFile, arg9), arg10);
             return result;
         }
     }
-    async uploadDocument(arg0: bigint, arg1: string, arg2: ExternalBlob): Promise<bigint | null> {
+    async uploadDocument(arg0: bigint, arg1: string, arg2: ExternalBlob, arg3: string): Promise<bigint | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.uploadDocument(arg0, arg1, await to_candid_ExternalBlob_n27(this._uploadFile, this._downloadFile, arg2));
+                const result = await this.actor.uploadDocument(arg0, arg1, await to_candid_ExternalBlob_n14(this._uploadFile, this._downloadFile, arg2), arg3);
                 return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.uploadDocument(arg0, arg1, await to_candid_ExternalBlob_n27(this._uploadFile, this._downloadFile, arg2));
+            const result = await this.actor.uploadDocument(arg0, arg1, await to_candid_ExternalBlob_n14(this._uploadFile, this._downloadFile, arg2), arg3);
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
 }
-function from_candid_CataloguingRecord_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CataloguingRecord): CataloguingRecord {
-    return from_candid_record_n16(_uploadFile, _downloadFile, value);
+function from_candid_CataloguingRecord_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CataloguingRecord): CataloguingRecord {
+    return from_candid_record_n30(_uploadFile, _downloadFile, value);
 }
-async function from_candid_Document_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Document): Promise<Document> {
-    return await from_candid_record_n20(_uploadFile, _downloadFile, value);
+async function from_candid_Document_n33(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Document): Promise<Document> {
+    return await from_candid_record_n34(_uploadFile, _downloadFile, value);
 }
-async function from_candid_ExternalBlob_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {
+function from_candid_EngineeringDiscipline_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _EngineeringDiscipline): EngineeringDiscipline {
+    return from_candid_variant_n24(_uploadFile, _downloadFile, value);
+}
+function from_candid_Equipment_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _Equipment): Equipment {
+    return from_candid_record_n22(_uploadFile, _downloadFile, value);
+}
+async function from_candid_ExternalBlob_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ExternalBlob): Promise<ExternalBlob> {
     return await _downloadFile(value);
 }
-function from_candid_MaintenanceRecord_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MaintenanceRecord): MaintenanceRecord {
-    return from_candid_record_n25(_uploadFile, _downloadFile, value);
+function from_candid_MaintenanceRecord_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _MaintenanceRecord): MaintenanceRecord {
+    return from_candid_record_n38(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n13(_uploadFile, _downloadFile, value);
+async function from_candid_SparePart_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _SparePart): Promise<SparePart> {
+    return await from_candid_record_n17(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserRole_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n27(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+async function from_candid_opt_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_ExternalBlob]): Promise<ExternalBlob | null> {
+    return value.length === 0 ? null : await from_candid_ExternalBlob_n19(_uploadFile, _downloadFile, value[0]);
+}
+function from_candid_opt_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Equipment]): Equipment | null {
-    return value.length === 0 ? null : value[0];
+function from_candid_opt_n35(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Equipment]): Equipment | null {
+    return value.length === 0 ? null : from_candid_Equipment_n21(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
     return value.length === 0 ? null : value[0];
@@ -750,39 +839,119 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+async function from_candid_record_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    manufacturer: string;
+    partNumber: bigint;
+    supplier: string;
+    additionalInformation: string;
+    name: string;
+    equipmentNumber: bigint;
+    description: string;
+    modelSerial: string;
+    quantity: bigint;
+    attachment: [] | [_ExternalBlob];
+    partNo: string;
+}): Promise<{
+    manufacturer: string;
+    partNumber: bigint;
+    supplier: string;
+    additionalInformation: string;
+    name: string;
+    equipmentNumber: bigint;
+    description: string;
+    modelSerial: string;
+    quantity: bigint;
+    attachment?: ExternalBlob;
+    partNo: string;
+}> {
+    return {
+        manufacturer: value.manufacturer,
+        partNumber: value.partNumber,
+        supplier: value.supplier,
+        additionalInformation: value.additionalInformation,
+        name: value.name,
+        equipmentNumber: value.equipmentNumber,
+        description: value.description,
+        modelSerial: value.modelSerial,
+        quantity: value.quantity,
+        attachment: record_opt_to_undefined(await from_candid_opt_n18(_uploadFile, _downloadFile, value.attachment)),
+        partNo: value.partNo
+    };
+}
+function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    model: string;
+    manufacturer: string;
+    discipline: _EngineeringDiscipline;
+    purchaseDate: _Time;
+    additionalInformation: string;
+    name: string;
+    equipmentNumber: bigint;
+    serialNumber: string;
+    warrantyExpiry: _Time;
+    location: string;
+}): {
+    model: string;
+    manufacturer: string;
+    discipline: EngineeringDiscipline;
+    purchaseDate: Time;
+    additionalInformation: string;
+    name: string;
+    equipmentNumber: bigint;
+    serialNumber: string;
+    warrantyExpiry: Time;
+    location: string;
+} {
+    return {
+        model: value.model,
+        manufacturer: value.manufacturer,
+        discipline: from_candid_EngineeringDiscipline_n23(_uploadFile, _downloadFile, value.discipline),
+        purchaseDate: value.purchaseDate,
+        additionalInformation: value.additionalInformation,
+        name: value.name,
+        equipmentNumber: value.equipmentNumber,
+        serialNumber: value.serialNumber,
+        warrantyExpiry: value.warrantyExpiry,
+        location: value.location
+    };
+}
+function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     status: {
         submitted: null;
     } | {
         draft: null;
     };
+    additionalInformation: string;
     equipmentNumber: bigint;
     templateName: string;
     attributes: Array<[string, string]>;
     materialDescription: string;
 }): {
     status: Variant_submitted_draft;
+    additionalInformation: string;
     equipmentNumber: bigint;
     templateName: string;
     attributes: Array<[string, string]>;
     materialDescription: string;
 } {
     return {
-        status: from_candid_variant_n17(_uploadFile, _downloadFile, value.status),
+        status: from_candid_variant_n31(_uploadFile, _downloadFile, value.status),
+        additionalInformation: value.additionalInformation,
         equipmentNumber: value.equipmentNumber,
         templateName: value.templateName,
         attributes: value.attributes,
         materialDescription: value.materialDescription
     };
 }
-async function from_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+async function from_candid_record_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     documentType: string;
+    additionalInformation: string;
     equipmentNumber: bigint;
     filePath: _ExternalBlob;
     docId: bigint;
     uploadDate: _Time;
 }): Promise<{
     documentType: string;
+    additionalInformation: string;
     equipmentNumber: bigint;
     filePath: ExternalBlob;
     docId: bigint;
@@ -790,13 +959,14 @@ async function from_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promi
 }> {
     return {
         documentType: value.documentType,
+        additionalInformation: value.additionalInformation,
         equipmentNumber: value.equipmentNumber,
-        filePath: await from_candid_ExternalBlob_n21(_uploadFile, _downloadFile, value.filePath),
+        filePath: await from_candid_ExternalBlob_n19(_uploadFile, _downloadFile, value.filePath),
         docId: value.docId,
         uploadDate: value.uploadDate
     };
 }
-function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     maintenanceStatus: {
         scheduled: null;
     } | {
@@ -804,6 +974,7 @@ function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uin
     } | {
         overdue: null;
     };
+    additionalInformation: string;
     equipmentNumber: bigint;
     maintenanceType: string;
     maintenanceId: bigint;
@@ -811,6 +982,7 @@ function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uin
     lastMaintenanceDate: _Time;
 }): {
     maintenanceStatus: Variant_scheduled_completed_overdue;
+    additionalInformation: string;
     equipmentNumber: bigint;
     maintenanceType: string;
     maintenanceId: bigint;
@@ -818,7 +990,8 @@ function from_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uin
     lastMaintenanceDate: Time;
 } {
     return {
-        maintenanceStatus: from_candid_variant_n26(_uploadFile, _downloadFile, value.maintenanceStatus),
+        maintenanceStatus: from_candid_variant_n39(_uploadFile, _downloadFile, value.maintenanceStatus),
+        additionalInformation: value.additionalInformation,
         equipmentNumber: value.equipmentNumber,
         maintenanceType: value.maintenanceType,
         maintenanceId: value.maintenanceId,
@@ -838,7 +1011,20 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
         topped_up_amount: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.topped_up_amount))
     };
 }
-function from_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    mechanical: null;
+} | {
+    piping: null;
+} | {
+    electrical: null;
+} | {
+    unknown: null;
+} | {
+    instrumentation: null;
+}): EngineeringDiscipline {
+    return "mechanical" in value ? EngineeringDiscipline.mechanical : "piping" in value ? EngineeringDiscipline.piping : "electrical" in value ? EngineeringDiscipline.electrical : "unknown" in value ? EngineeringDiscipline.unknown : "instrumentation" in value ? EngineeringDiscipline.instrumentation : value;
+}
+function from_candid_variant_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -847,14 +1033,14 @@ function from_candid_variant_n13(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_variant_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     submitted: null;
 } | {
     draft: null;
 }): Variant_submitted_draft {
     return "submitted" in value ? Variant_submitted_draft.submitted : "draft" in value ? Variant_submitted_draft.draft : value;
 }
-function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     scheduled: null;
 } | {
     completed: null;
@@ -863,16 +1049,25 @@ function from_candid_variant_n26(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): Variant_scheduled_completed_overdue {
     return "scheduled" in value ? Variant_scheduled_completed_overdue.scheduled : "completed" in value ? Variant_scheduled_completed_overdue.completed : "overdue" in value ? Variant_scheduled_completed_overdue.overdue : value;
 }
-function from_candid_vec_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_CataloguingRecord>): Array<CataloguingRecord> {
-    return value.map((x)=>from_candid_CataloguingRecord_n15(_uploadFile, _downloadFile, x));
+async function from_candid_vec_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_SparePart>): Promise<Array<SparePart>> {
+    return await Promise.all(value.map(async (x)=>await from_candid_SparePart_n16(_uploadFile, _downloadFile, x)));
 }
-async function from_candid_vec_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Document>): Promise<Array<Document>> {
-    return await Promise.all(value.map(async (x)=>await from_candid_Document_n19(_uploadFile, _downloadFile, x)));
+function from_candid_vec_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Equipment>): Array<Equipment> {
+    return value.map((x)=>from_candid_Equipment_n21(_uploadFile, _downloadFile, x));
 }
-function from_candid_vec_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_MaintenanceRecord>): Array<MaintenanceRecord> {
-    return value.map((x)=>from_candid_MaintenanceRecord_n24(_uploadFile, _downloadFile, x));
+function from_candid_vec_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_CataloguingRecord>): Array<CataloguingRecord> {
+    return value.map((x)=>from_candid_CataloguingRecord_n29(_uploadFile, _downloadFile, x));
 }
-async function to_candid_ExternalBlob_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ExternalBlob): Promise<_ExternalBlob> {
+async function from_candid_vec_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_Document>): Promise<Array<Document>> {
+    return await Promise.all(value.map(async (x)=>await from_candid_Document_n33(_uploadFile, _downloadFile, x)));
+}
+function from_candid_vec_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_MaintenanceRecord>): Array<MaintenanceRecord> {
+    return value.map((x)=>from_candid_MaintenanceRecord_n37(_uploadFile, _downloadFile, x));
+}
+function to_candid_EngineeringDiscipline_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: EngineeringDiscipline): _EngineeringDiscipline {
+    return to_candid_variant_n11(_uploadFile, _downloadFile, value);
+}
+async function to_candid_ExternalBlob_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ExternalBlob): Promise<_ExternalBlob> {
     return await _uploadFile(value);
 }
 function to_candid_UserRole_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
@@ -884,6 +1079,9 @@ function to_candid__CaffeineStorageRefillInformation_n2(_uploadFile: (file: Exte
 function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _CaffeineStorageRefillInformation | null): [] | [__CaffeineStorageRefillInformation] {
     return value === null ? candid_none() : candid_some(to_candid__CaffeineStorageRefillInformation_n2(_uploadFile, _downloadFile, value));
 }
+async function to_candid_opt_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ExternalBlob | null): Promise<[] | [_ExternalBlob]> {
+    return value === null ? candid_none() : candid_some(await to_candid_ExternalBlob_n14(_uploadFile, _downloadFile, value));
+}
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     proposed_top_up_amount?: bigint;
 }): {
@@ -893,7 +1091,30 @@ function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
         proposed_top_up_amount: value.proposed_top_up_amount ? candid_some(value.proposed_top_up_amount) : candid_none()
     };
 }
-function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Variant_scheduled_completed_overdue): {
+function to_candid_variant_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: EngineeringDiscipline): {
+    mechanical: null;
+} | {
+    piping: null;
+} | {
+    electrical: null;
+} | {
+    unknown: null;
+} | {
+    instrumentation: null;
+} {
+    return value == EngineeringDiscipline.mechanical ? {
+        mechanical: null
+    } : value == EngineeringDiscipline.piping ? {
+        piping: null
+    } : value == EngineeringDiscipline.electrical ? {
+        electrical: null
+    } : value == EngineeringDiscipline.unknown ? {
+        unknown_: null
+    } : value == EngineeringDiscipline.instrumentation ? {
+        instrumentation: null
+    } : value;
+}
+function to_candid_variant_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Variant_scheduled_completed_overdue): {
     scheduled: null;
 } | {
     completed: null;

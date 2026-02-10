@@ -1,36 +1,105 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-10T05:32:41.852Z",
-  "summary": "Diff adds frontend-side error normalization and improved Equipment Master submission/error UX, plus React Query cache invalidation/refetch after equipment creation. Backend createEquipment now traps with a specific \"Unauthorized: Only users can create equipment\" message when caller lacks #user permission, but the diff does not clearly show a backend fix that ensures normal authenticated users are granted the needed permission, nor does it clearly show the actor/access-control initialization hardening requested.",
+  "generatedAt": "2026-02-10T12:24:13.448Z",
+  "summary": "Diff shows new fields added to backend record types (additionalInformation across records; discipline on Equipment) and frontend additions for discipline options and passing additionalInfo/discipline through some React Query mutations and pages. However, several backend acceptance criteria (method signature updates, defaulting behavior, and upgrade migration wiring) are not verifiable from the truncated diff. Also, a new backend module file and additional frontend features (reports export; enhanced spare parts search) appear outside the BuildRequest and may violate constraints/non-goals.",
   "missing_requirements": [
     {
       "id": "REQ-1",
-      "requirement": "Fix the root cause of equipment creation failing so an authenticated (Internet Identity) user can successfully create equipment records via backend createEquipment without authorization/access-control initialization errors.",
-      "reason": "backend/main.mo shows an authorization check that traps when the caller lacks #user, but the diff summary does not show any change that initializes/grants #user permissions for normal authenticated users (i.e., the root cause of the authorization failure is not evident from the shown changes). The file is truncated, so this may exist outside the visible portion, but it is not supported by the provided diff summary.",
+      "requirement": "Update all backend create/update/query methods for Equipment, SparePart, CataloguingRecord, MaintenanceRecord, and Document to accept, persist, and return additionalInformation; default to empty string when omitted.",
+      "reason": "While the type definitions now include additionalInformation, the diff snippet does not show the corresponding create/update/get/list/search method implementations or any explicit defaulting logic when the field is omitted. backend/main.mo is truncated before these methods.",
       "evidence": [
-        "backend/main.mo (truncated)"
+        "backend/main.mo (truncated; shows type additions but not CRUD/query implementations)"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Update equipment create/update/query methods to accept/store/return discipline and validate against the allowed set with a safe fallback for invalid values.",
+      "reason": "The Equipment type includes discipline and there are helper conversion functions, but the diff does not show createEquipment/updateEquipment/getEquipment/list implementations to confirm discipline is validated/stored safely and returned in all relevant queries.",
+      "evidence": [
+        "backend/main.mo (truncated; shows EngineeringDiscipline type and text conversion helpers, but not equipment CRUD/query methods)"
       ]
     },
     {
       "id": "REQ-3",
-      "requirement": "Harden actor/access-control initialization so failures do not silently break mutations; surface initialization failures to the UI and ensure the app can recover after login/logout changes (no stale actor).",
-      "reason": "A new component (AccessControlInitBanner.tsx) is added, but the diff summary does not show changes to the actor initialization hook or wiring that would (a) detect/handle access-control init failures during actor creation, (b) surface them to the UI, and (c) ensure correct actor refresh after login/logout. The only shown hook changes are in useQueries.ts and do not address actor lifecycle/initialization.",
+      "requirement": "Implement conditional stable-state data migration on upgrade to add defaults for new fields without losing existing data.",
+      "reason": "A migration module is added and main.mo references it, but the migration implementation is truncated and the canister upgrade hooks (preupgrade/postupgrade or stable var handling) are not visible in the provided backend/main.mo snippet, so successful defaulting and non-destructive upgrade behavior cannot be confirmed from the diff summary alone.",
       "evidence": [
-        "frontend/src/components/AccessControlInitBanner.tsx",
-        "frontend/src/hooks/useQueries.ts (truncated)"
+        "backend/migration.mo (truncated; run() body not shown)",
+        "backend/main.mo (truncated; shows '(with migration = Migration.run)' but no visible upgrade hook wiring)"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Add an \"Additional Information\" labeled multiline textarea to every relevant create/edit UI flow (Equipment Master, equipment edit, spare parts create/edit, cataloguing create/edit, maintenance create/edit, documents metadata create/edit) and persist it via updated backend APIs.",
+      "reason": "State variables and mutation payload fields named additionalInformation/additionalInfo are shown in multiple pages, but the truncated page diffs do not clearly show the actual labeled textarea UI element \"Additional Information\" in each page/dialog, so full UI coverage cannot be verified from the diff summary alone.",
+      "evidence": [
+        "frontend/src/pages/EquipmentMasterPage.tsx (truncated)",
+        "frontend/src/pages/EquipmentListPage.tsx (truncated)",
+        "frontend/src/pages/SparePartsPage.tsx (truncated)",
+        "frontend/src/pages/CataloguingPage.tsx (truncated)",
+        "frontend/src/pages/MaintenancePage.tsx (truncated)",
+        "frontend/src/pages/DocumentsPage.tsx (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "requirement": "Add a Discipline dropdown labeled \"Discipline\" on Equipment Master with exact options MECHANICAL/ELECTRICAL/INSTRUMENTATION/PIPING; persist and display/edit it in listing/edit flows.",
+      "reason": "Discipline options/constants exist and discipline is included in create/update payloads, but the truncated page diffs do not show the dropdown UI with the exact label \"Discipline\" and option rendering, nor confirm it is surfaced in the equipment list table display (only edit form state is shown).",
+      "evidence": [
+        "frontend/src/lib/disciplines.ts",
+        "frontend/src/pages/EquipmentMasterPage.tsx (truncated)",
+        "frontend/src/pages/EquipmentListPage.tsx (truncated)"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Update all relevant React Query hooks and backend type usage so all CRUD mutations/queries include new fields without TS/runtime mismatches.",
+      "reason": "Equipment create/update hooks are shown updated, but the diff excerpt of useQueries.ts is truncated before showing spare part, cataloguing, maintenance, and documents mutations/queries. Therefore, it cannot be verified that all affected hooks were updated consistently.",
+      "evidence": [
+        "frontend/src/hooks/useQueries.ts (truncated; only equipment section clearly visible)"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "Added a separate backend module file backend/migration.mo, potentially violating the constraint that all backend logic must remain in backend/main.mo as a single Motoko actor.",
+      "reason": "BuildRequest constraint explicitly requires all logic in backend/main.mo; diff adds backend/migration.mo and imports it in main.mo.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo (imports Migration \"migration\"; '(with migration = Migration.run)')"
+      ]
+    },
+    {
+      "description": "Reports page includes export to CSV and PDF functionality.",
+      "reason": "Not requested; BuildRequest non-goals include not adding new pages beyond inserting requested fields. Diff summary mentions ReportsPage export features.",
+      "evidence": [
+        "frontend-file-summaries.txt (\"frontend/src/pages/ReportsPage.tsx\": \"... export to CSV and PDF functionality ...\")"
+      ]
+    },
+    {
+      "description": "Enhanced/advanced spare parts search filters and cross-equipment results display beyond adding the requested fields.",
+      "reason": "Non-goal: changing existing search behavior or adding new search filters unrelated to requested fields. Diff summary indicates advanced spare parts search filters by multiple fields and corresponding new hooks.",
+      "evidence": [
+        "frontend-file-summaries.txt (\"frontend/src/pages/SparePartsPage.tsx\": \"... advanced search filters ...\")",
+        "frontend-file-summaries.txt (\"frontend/src/hooks/useQueries.ts\": \"... new search hooks for filtering spare parts ...\")",
+        "frontend/src/pages/SparePartsPage.tsx (truncated; shows searchCriteria with equipmentTagNumber/modelSerial/partNo/manufacturer)"
+      ]
+    }
+  ],
   "confidence": 0.62,
   "changed_files": [
     "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/AccessControlInitBanner.tsx",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/errors.ts",
+    "frontend/src/lib/disciplines.ts",
+    "frontend/src/pages/CataloguingPage.tsx",
+    "frontend/src/pages/DocumentsPage.tsx",
+    "frontend/src/pages/EquipmentListPage.tsx",
     "frontend/src/pages/EquipmentMasterPage.tsx",
+    "frontend/src/pages/MaintenancePage.tsx",
+    "frontend/src/pages/SparePartsPage.tsx",
     "project_state.json"
   ]
 }

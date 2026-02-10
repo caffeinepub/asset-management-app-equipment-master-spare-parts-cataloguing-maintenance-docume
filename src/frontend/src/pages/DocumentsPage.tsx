@@ -37,11 +37,13 @@ export default function DocumentsPage() {
   const [documentType, setDocumentType] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [additionalInformation, setAdditionalInformation] = useState('');
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
   const [editDocType, setEditDocType] = useState('');
+  const [editAdditionalInformation, setEditAdditionalInformation] = useState('');
 
   const { data: documents, isLoading } = useGetDocumentsByEquipment(viewEquipment);
 
@@ -76,6 +78,7 @@ export default function DocumentsPage() {
           equipmentNumber: selectedEquipment,
           docType: documentType,
           file: blob,
+          additionalInfo: additionalInformation,
         },
         {
           onSuccess: (docId) => {
@@ -84,6 +87,7 @@ export default function DocumentsPage() {
               setDocumentType('');
               setSelectedFile(null);
               setUploadProgress(0);
+              setAdditionalInformation('');
               const fileInput = document.getElementById('file-input') as HTMLInputElement;
               if (fileInput) fileInput.value = '';
             } else {
@@ -104,6 +108,7 @@ export default function DocumentsPage() {
   const handleEdit = (doc: Document) => {
     setSelectedDoc(doc);
     setEditDocType(doc.documentType);
+    setEditAdditionalInformation(doc.additionalInformation || '');
     setEditDialogOpen(true);
   };
 
@@ -122,19 +127,20 @@ export default function DocumentsPage() {
         equipmentNumber: viewEquipment,
         docId: selectedDoc.docId,
         newDocType: editDocType,
+        additionalInfo: editAdditionalInformation,
       },
       {
         onSuccess: (success) => {
           if (success) {
-            toast.success('Document type updated successfully');
+            toast.success('Document metadata updated successfully');
             setEditDialogOpen(false);
             setSelectedDoc(null);
           } else {
-            toast.error('Failed to update document type');
+            toast.error('Failed to update document metadata');
           }
         },
         onError: () => {
-          toast.error('Failed to update document type');
+          toast.error('Failed to update document metadata');
         },
       }
     );
@@ -217,6 +223,15 @@ export default function DocumentsPage() {
                     Selected: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
                   </p>
                 )}
+              </FormField>
+
+              <FormField label="Additional Information">
+                <textarea
+                  value={additionalInformation}
+                  onChange={(e) => setAdditionalInformation(e.target.value)}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter any additional information about this document"
+                />
               </FormField>
 
               {uploadProgress > 0 && uploadProgress < 100 && (
@@ -316,8 +331,8 @@ export default function DocumentsPage() {
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Document Type</DialogTitle>
-            <DialogDescription>Update the document type below</DialogDescription>
+            <DialogTitle>Edit Document Metadata</DialogTitle>
+            <DialogDescription>Update the document type and additional information below</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateSubmit} className="space-y-4">
             <FormField label="Document Type" required>
@@ -334,6 +349,15 @@ export default function DocumentsPage() {
                 <option value="Inspection Report">Inspection Report</option>
                 <option value="Photo">Photo</option>
               </select>
+            </FormField>
+
+            <FormField label="Additional Information">
+              <textarea
+                value={editAdditionalInformation}
+                onChange={(e) => setEditAdditionalInformation(e.target.value)}
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter any additional information about this document"
+              />
             </FormField>
 
             <DialogFooter>

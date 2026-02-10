@@ -1,78 +1,120 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix equipment creation auth/init failures and surface actionable UI errors",
+  "title": "Add Additional Information field to all create/edit UIs and Discipline dropdown in Equipment Master",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Ensure authenticated users can create equipment successfully by preventing access-control initialization failures from breaking actor usage and by ensuring equipment lists update after creation.",
+      "id": "REQ-4",
+      "summary": "Add an \"Additional Information\" multiline textarea to each record create/edit UI and persist it via backend calls.",
       "acceptanceCriteria": [
-        "When a user is authenticated with Internet Identity, submitting the Equipment Master form successfully creates an equipment record and returns a new equipmentNumber.",
-        "The equipment record appears in the Equipment List after creation (without requiring a hard refresh).",
-        "Creating equipment does not fail due to missing/incorrect access-control initialization for normal authenticated users.",
-        "Anonymous (not signed-in) users cannot create equipment and receive a clear, non-generic error message in the UI (see REQ-2)."
+        "Each create/edit form for Equipment, Spare Parts, Cataloguing records, Maintenance records, and Documents includes a labeled textarea: \"Additional Information\"",
+        "Submitting any create/edit form persists the Additional Information text and it is visible after reload/refetch",
+        "Existing UI behavior remains unchanged when Additional Information is left blank",
+        "All user-facing labels/placeholder text are in English"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useActor.ts",
+          "path": "frontend/src/pages/EquipmentMasterPage.tsx",
           "operation": "modify",
-          "description": "Adjust actor creation so access-control initialization (authorization component initialization via the actor’s access-control init call) is non-blocking for normal authenticated users (e.g., only attempt secret-based initialization when a secret is present and/or capture failures instead of breaking actor availability). Expose an actor initialization status/error for UI consumption. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Harden equipment creation mutation behavior to ensure the equipment list queries are refreshed after successful creation (invalidate + refetch relevant queries so the list updates without a hard refresh) and propagate underlying errors upward so the UI can display specific messages."
+          "description": "Add an \"Additional Information\" textarea to the equipment creation form, store it in local form state, and include it in the create-equipment mutation payload. Verify the component's usage instructions before implementing."
         },
         {
           "path": "frontend/src/pages/EquipmentListPage.tsx",
           "operation": "modify",
-          "description": "Ensure the Equipment List view reacts to refreshed query data after creation (no hard refresh needed) and optionally display a lightweight loading/refresh state when the underlying equipment query refetches."
+          "description": "Add an \"Additional Information\" textarea to the equipment edit dialog, prefill from the selected equipment record, and include it in the update-equipment mutation payload. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/SparePartsPage.tsx",
+          "operation": "modify",
+          "description": "Add an \"Additional Information\" textarea to the spare part create form and edit dialog, bind to form state, and include it in create/update mutation payloads while keeping current attachment behavior unchanged. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/CataloguingPage.tsx",
+          "operation": "modify",
+          "description": "Add an \"Additional Information\" textarea to cataloguing create/edit form state and include it in create/update mutation payloads (draft/submitted flows unchanged). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/MaintenancePage.tsx",
+          "operation": "modify",
+          "description": "Add an \"Additional Information\" textarea to maintenance create form and edit dialog, bind to state, and include it in create/update mutation payloads. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/DocumentsPage.tsx",
+          "operation": "modify",
+          "description": "Add an \"Additional Information\" textarea to document upload metadata and document metadata edit UI; include the field in upload and metadata update mutation payloads while preserving existing file upload behavior. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-2",
-      "summary": "Improve equipment creation error handling to show the real underlying error and guide users to sign in when unauthenticated/unauthorized.",
+      "id": "REQ-5",
+      "summary": "Add a Discipline dropdown to equipment create/edit/list flows and persist discipline through frontend mutations and queries.",
       "acceptanceCriteria": [
-        "If createEquipment fails, the UI displays an error toast that includes a specific reason when available (e.g., \"Unauthorized: Only users can create equipment\").",
-        "If the user is not authenticated (anonymous actor), the Equipment Master page prevents submission and displays a clear English message indicating the user must sign in to save equipment.",
-        "The existing success toast and form reset behavior remains unchanged on successful creation."
+        "Equipment Master page includes a select/dropdown labeled \"Discipline\" with the four options exactly as provided",
+        "Creating equipment sends the selected discipline to the backend and it is returned on subsequent fetches",
+        "Equipment list/edit UI surfaces the discipline value for existing equipment (including blank for legacy/migrated records)",
+        "All user-facing text is in English"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/lib/errors.ts",
+          "path": "frontend/src/lib/disciplines.ts",
           "operation": "create",
-          "description": "Add a small utility to normalize/parse errors from backend calls into a user-friendly English message (e.g., extracting trap messages / unauthorized text) so toasts can display specific reasons."
+          "description": "Add a small shared utility/constants module for the allowed discipline UI options (MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING) and mapping to/from the backend EngineeringDiscipline enum values used by the actor. Verify the component's usage instructions before implementing."
         },
         {
           "path": "frontend/src/pages/EquipmentMasterPage.tsx",
           "operation": "modify",
-          "description": "Use Internet Identity state (via existing auth context) to prevent submission when the user is not signed in, showing a clear English message near the submit action. On mutation failure, use the shared error-normalization utility to show a specific toast message (and include sign-in guidance when the message indicates authentication/authorization). Keep the existing success toast and form reset behavior unchanged on success."
+          "description": "Add a \"Discipline\" select/dropdown to the equipment creation form with options exactly: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; default to blank for legacy/unspecified; map selected UI value to backend EngineeringDiscipline in the create mutation payload. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/EquipmentListPage.tsx",
+          "operation": "modify",
+          "description": "Display discipline in the equipment list table (e.g., a new column) and add a Discipline select/dropdown in the edit dialog; prefill from the selected equipment, allow blank, and persist changes through the update mutation payload using the backend enum mapping. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-3",
-      "summary": "Surface access-control initialization failures to the UI and ensure actor refresh/recovery after login/logout so mutations don’t use a stale or incorrectly initialized actor.",
+      "id": "REQ-6",
+      "summary": "Update React Query hooks and backend type usage so all relevant queries/mutations include additionalInformation and discipline with no TS/runtime mismatches.",
       "acceptanceCriteria": [
-        "If the call that initializes access control during actor creation fails, the app shows a user-facing English error indicating initialization failed and prompts the user to retry/login again.",
-        "After login/logout, queries and mutations use the correct actor for the current identity (no stale actor causing authorization failures)."
+        "Frontend builds successfully with no TypeScript errors related to backend types or actor method signatures",
+        "All affected hooks (create/update for equipment, spare parts, cataloguing, maintenance, documents) pass the new fields",
+        "Queries/refetches continue to work and UI updates after mutations as before"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useActor.ts",
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Return additional state from useActor (e.g., initializationError and a retry method that resets the actor query) and ensure identity changes reliably recreate the actor and invalidate/refetch dependent queries without leaving a stale actor in place."
+          "description": "Update equipment/spare part/cataloguing/maintenance/document mutations to match the backend actor signatures by including the new additionalInfo parameter for all relevant create/update operations, and including discipline for equipment create/update operations; ensure TypeScript types line up with frontend/src/backend.d.ts. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/components/AccessControlInitBanner.tsx",
-          "operation": "create",
-          "description": "Create a small UI component that reads useActor initialization status and, when initialization fails, renders an English error message with a retry/login-again prompt. (Uses existing UI patterns; shadcn-ui can be used for consistent styling. Verify the component's usage instructions before implementing.)"
+          "path": "frontend/src/pages/EquipmentMasterPage.tsx",
+          "operation": "modify",
+          "description": "Align the create-equipment call site with updated hook parameter shape (additionalInformation + discipline) and ensure blank values submit safely (empty string / unknown mapping) without changing existing validation rules. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/pages/EquipmentListPage.tsx",
           "operation": "modify",
-          "description": "Wire the new AccessControlInitBanner into the root layout so initialization failures are visible across pages and the app can guide the user to retry or re-authenticate."
+          "description": "Align the update-equipment call site with updated hook parameter shape (additionalInformation + discipline) and ensure legacy records with blank/unknown discipline render without crashing. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/SparePartsPage.tsx",
+          "operation": "modify",
+          "description": "Align spare part create/update call sites with updated hook parameter shape including additionalInformation, keeping all existing invalidations and UI flows intact. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/CataloguingPage.tsx",
+          "operation": "modify",
+          "description": "Align cataloguing create/update call sites with updated hook parameter shape including additionalInformation, keeping draft/submitted behavior intact. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/MaintenancePage.tsx",
+          "operation": "modify",
+          "description": "Align maintenance create/update call sites with updated hook parameter shape including additionalInformation, keeping status/date handling intact. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/DocumentsPage.tsx",
+          "operation": "modify",
+          "description": "Align document upload and metadata update call sites with updated hook parameter shape including additionalInformation, ensuring refetch/invalidation behavior remains unchanged. Verify the component's usage instructions before implementing."
         }
       ]
     }

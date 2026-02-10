@@ -12,17 +12,27 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+import Migration "migration";
+import VarArray "mo:core/VarArray";
 
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
-  // Access control system (persistent state)
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
   public type UserProfile = {
     name : Text;
     department : Text;
+  };
+
+  public type EngineeringDiscipline = {
+    #mechanical;
+    #electrical;
+    #instrumentation;
+    #piping;
+    #unknown;
   };
 
   type Equipment = {
@@ -34,6 +44,8 @@ actor {
     serialNumber : Text;
     purchaseDate : Time.Time;
     warrantyExpiry : Time.Time;
+    additionalInformation : Text;
+    discipline : EngineeringDiscipline;
   };
 
   module Equipment {
@@ -49,6 +61,11 @@ actor {
     description : Text;
     quantity : Nat;
     supplier : Text;
+    manufacturer : Text;
+    partNo : Text;
+    modelSerial : Text;
+    attachment : ?File.ExternalBlob;
+    additionalInformation : Text;
   };
 
   module SparePart {
@@ -63,6 +80,7 @@ actor {
     templateName : Text;
     attributes : [(Text, Text)];
     status : { #draft; #submitted };
+    additionalInformation : Text;
   };
 
   type MaintenanceRecord = {
@@ -72,6 +90,7 @@ actor {
     maintenanceStatus : { #scheduled; #completed; #overdue };
     lastMaintenanceDate : Time.Time;
     nextMaintenanceDate : Time.Time;
+    additionalInformation : Text;
   };
 
   type Document = {
@@ -80,6 +99,7 @@ actor {
     documentType : Text;
     uploadDate : Time.Time;
     filePath : File.ExternalBlob;
+    additionalInformation : Text;
   };
 
   var nextEquipmentNumber : Nat = 1;
@@ -94,7 +114,26 @@ actor {
   let documentMap = Map.empty<Nat, List.List<Document>>();
   let userProfiles = Map.empty<Principal, UserProfile>();
 
-  // User Profile Methods
+  func engineeringDisciplineToText(discipline : EngineeringDiscipline) : Text {
+    switch (discipline) {
+      case (#mechanical) { "MECHANICAL" };
+      case (#electrical) { "ELECTRICAL" };
+      case (#instrumentation) { "INSTRUMENTATION" };
+      case (#piping) { "PIPING" };
+      case (#unknown) { "UNKNOWN" };
+    };
+  };
+
+  func textToEngineeringDiscipline(text : Text) : EngineeringDiscipline {
+    switch (text) {
+      case ("MECHANICAL") { #mechanical };
+      case ("ELECTRICAL") { #electrical };
+      case ("INSTRUMENTATION") { #instrumentation };
+      case ("PIPING") { #piping };
+      case (_) { #unknown };
+    };
+  };
+
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can access profiles");
@@ -116,8 +155,17 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Equipment Methods
-  public shared ({ caller }) func createEquipment(name : Text, location : Text, manufacturer : Text, model : Text, serial : Text, purchase : Time.Time, warranty : Time.Time) : async Nat {
+  public shared ({ caller }) func createEquipment(
+    name : Text,
+    location : Text,
+    manufacturer : Text,
+    model : Text,
+    serial : Text,
+    purchase : Time.Time,
+    warranty : Time.Time,
+    additionalInfo : Text,
+    discipline : EngineeringDiscipline,
+  ) : async Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create equipment");
     };
@@ -131,6 +179,8 @@ actor {
       serialNumber = serial;
       purchaseDate = purchase;
       warrantyExpiry = warranty;
+      additionalInformation = additionalInfo;
+      discipline;
     };
     equipmentMap.add(nextEquipmentNumber, equipment);
     nextEquipmentNumber += 1;
@@ -151,7 +201,18 @@ actor {
     equipmentMap.values().toArray().sort();
   };
 
-  public shared ({ caller }) func updateEquipment(equipmentNumber : Nat, name : Text, location : Text, manufacturer : Text, model : Text, serial : Text, purchase : Time.Time, warranty : Time.Time) : async Bool {
+  public shared ({ caller }) func updateEquipment(
+    equipmentNumber : Nat,
+    name : Text,
+    location : Text,
+    manufacturer : Text,
+    model : Text,
+    serial : Text,
+    purchase : Time.Time,
+    warranty : Time.Time,
+    additionalInfo : Text,
+    discipline : EngineeringDiscipline,
+  ) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update equipment");
     };
@@ -168,6 +229,8 @@ actor {
           serialNumber = serial;
           purchaseDate = purchase;
           warrantyExpiry = warranty;
+          additionalInformation = additionalInfo;
+          discipline;
         };
         equipmentMap.add(equipmentNumber, updatedEquipment);
         true;
@@ -184,7 +247,6 @@ actor {
       case (null) { false };
       case (?_existing) {
         equipmentMap.remove(equipmentNumber);
-        // Cleanup related data
         sparePartsMap.remove(equipmentNumber);
         cataloguingMap.remove(equipmentNumber);
         maintenanceMap.remove(equipmentNumber);
@@ -194,8 +256,18 @@ actor {
     };
   };
 
-  // Spare Parts Methods
-  public shared ({ caller }) func createSparePart(equipmentNumber : Nat, name : Text, description : Text, quantity : Nat, supplier : Text) : async ?Nat {
+  public shared ({ caller }) func createSparePart(
+    equipmentNumber : Nat,
+    name : Text,
+    description : Text,
+    quantity : Nat,
+    supplier : Text,
+    manufacturer : Text,
+    partNo : Text,
+    modelSerial : Text,
+    attachment : ?File.ExternalBlob,
+    additionalInfo : Text,
+  ) : async ?Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create spare parts");
     };
@@ -211,6 +283,11 @@ actor {
       description;
       quantity;
       supplier;
+      manufacturer;
+      partNo;
+      modelSerial;
+      attachment;
+      additionalInformation = additionalInfo;
     };
 
     let existingParts = switch (sparePartsMap.get(equipmentNumber)) {
@@ -235,7 +312,19 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateSparePart(equipmentNumber : Nat, partNumber : Nat, name : Text, description : Text, quantity : Nat, supplier : Text) : async Bool {
+  public shared ({ caller }) func updateSparePart(
+    equipmentNumber : Nat,
+    partNumber : Nat,
+    name : Text,
+    description : Text,
+    quantity : Nat,
+    supplier : Text,
+    manufacturer : Text,
+    partNo : Text,
+    modelSerial : Text,
+    attachment : ?File.ExternalBlob,
+    additionalInfo : Text,
+  ) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update spare parts");
     };
@@ -253,6 +342,11 @@ actor {
                 description;
                 quantity;
                 supplier;
+                manufacturer;
+                partNo;
+                modelSerial;
+                attachment;
+                additionalInformation = additionalInfo;
               };
             } else {
               p;
@@ -282,8 +376,82 @@ actor {
     };
   };
 
-  // Cataloguing Methods
-  public shared ({ caller }) func createCataloguingRecord(equipmentNumber : Nat, materialDesc : Text, templateName : Text, attributes : [(Text, Text)], isDraft : Bool) : async ?Nat {
+  public query ({ caller }) func findSparePartsByEquipmentTagNumber(equipmentTagNumber : Nat) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search spare parts");
+    };
+
+    switch (sparePartsMap.get(equipmentTagNumber)) {
+      case (null) { [] };
+      case (?parts) { parts.toArray() };
+    };
+  };
+
+  public query ({ caller }) func findSparePartsByModelSerial(modelSerial : Text) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search spare parts");
+    };
+
+    let result = List.empty<SparePart>();
+    let allEntries = sparePartsMap.entries().toArray();
+
+    for ((_, parts) in allEntries.values()) {
+      for (part in parts.values()) {
+        if (part.modelSerial.contains(#text modelSerial)) {
+          result.add(part);
+        };
+      };
+    };
+
+    result.toArray();
+  };
+
+  public query ({ caller }) func findSparePartsByPartNo(partNo : Text) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search spare parts");
+    };
+
+    let result = List.empty<SparePart>();
+    let allEntries = sparePartsMap.entries().toArray();
+
+    for ((_, parts) in allEntries.values()) {
+      for (part in parts.values()) {
+        if (part.partNo.contains(#text partNo)) {
+          result.add(part);
+        };
+      };
+    };
+
+    result.toArray();
+  };
+
+  public query ({ caller }) func findSparePartsByManufacturer(manufacturer : Text) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search spare parts");
+    };
+
+    let result = List.empty<SparePart>();
+    let allEntries = sparePartsMap.entries().toArray();
+
+    for ((_, parts) in allEntries.values()) {
+      for (part in parts.values()) {
+        if (part.manufacturer.contains(#text manufacturer)) {
+          result.add(part);
+        };
+      };
+    };
+
+    result.toArray();
+  };
+
+  public shared ({ caller }) func createCataloguingRecord(
+    equipmentNumber : Nat,
+    materialDesc : Text,
+    templateName : Text,
+    attributes : [(Text, Text)],
+    isDraft : Bool,
+    additionalInfo : Text,
+  ) : async ?Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create cataloguing records");
     };
@@ -298,6 +466,7 @@ actor {
       templateName;
       attributes;
       status = if (isDraft) { #draft } else { #submitted };
+      additionalInformation = additionalInfo;
     };
 
     let existingRecords = switch (cataloguingMap.get(equipmentNumber)) {
@@ -321,7 +490,15 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateCataloguingRecord(equipmentNumber : Nat, recordIndex : Nat, materialDesc : Text, templateName : Text, attributes : [(Text, Text)], isDraft : Bool) : async Bool {
+  public shared ({ caller }) func updateCataloguingRecord(
+    equipmentNumber : Nat,
+    recordIndex : Nat,
+    materialDesc : Text,
+    templateName : Text,
+    attributes : [(Text, Text)],
+    isDraft : Bool,
+    additionalInfo : Text,
+  ) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update cataloguing records");
     };
@@ -340,6 +517,7 @@ actor {
           templateName;
           attributes;
           status = if (isDraft) { #draft } else { #submitted };
+          additionalInformation = additionalInfo;
         };
 
         let updatedRecords = List.empty<CataloguingRecord>();
@@ -387,8 +565,14 @@ actor {
     };
   };
 
-  // Maintenance Methods
-  public shared ({ caller }) func createMaintenanceRecord(equipmentNumber : Nat, maintType : Text, status : { #scheduled; #completed; #overdue }, lastDate : Time.Time, nextDate : Time.Time) : async ?Nat {
+  public shared ({ caller }) func createMaintenanceRecord(
+    equipmentNumber : Nat,
+    maintType : Text,
+    status : { #scheduled; #completed; #overdue },
+    lastDate : Time.Time,
+    nextDate : Time.Time,
+    additionalInfo : Text,
+  ) : async ?Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create maintenance records");
     };
@@ -404,6 +588,7 @@ actor {
       maintenanceStatus = status;
       lastMaintenanceDate = lastDate;
       nextMaintenanceDate = nextDate;
+      additionalInformation = additionalInfo;
     };
 
     let existingRecords = switch (maintenanceMap.get(equipmentNumber)) {
@@ -428,7 +613,15 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateMaintenanceRecord(equipmentNumber : Nat, maintenanceId : Nat, maintType : Text, status : { #scheduled; #completed; #overdue }, lastDate : Time.Time, nextDate : Time.Time) : async Bool {
+  public shared ({ caller }) func updateMaintenanceRecord(
+    equipmentNumber : Nat,
+    maintenanceId : Nat,
+    maintType : Text,
+    status : { #scheduled; #completed; #overdue },
+    lastDate : Time.Time,
+    nextDate : Time.Time,
+    additionalInfo : Text,
+  ) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update maintenance records");
     };
@@ -446,6 +639,7 @@ actor {
                 maintenanceStatus = status;
                 lastMaintenanceDate = lastDate;
                 nextMaintenanceDate = nextDate;
+                additionalInformation = additionalInfo;
               };
             } else {
               record;
@@ -475,8 +669,12 @@ actor {
     };
   };
 
-  // Document Methods
-  public shared ({ caller }) func uploadDocument(equipmentNumber : Nat, docType : Text, file : File.ExternalBlob) : async ?Nat {
+  public shared ({ caller }) func uploadDocument(
+    equipmentNumber : Nat,
+    docType : Text,
+    file : File.ExternalBlob,
+    additionalInfo : Text,
+  ) : async ?Nat {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can upload documents");
     };
@@ -491,6 +689,7 @@ actor {
       documentType = docType;
       uploadDate = Time.now();
       filePath = file;
+      additionalInformation = additionalInfo;
     };
 
     let existingDocs = switch (documentMap.get(equipmentNumber)) {
@@ -532,7 +731,12 @@ actor {
     };
   };
 
-  public shared ({ caller }) func updateDocumentMetadata(equipmentNumber : Nat, docId : Nat, newDocType : Text) : async Bool {
+  public shared ({ caller }) func updateDocumentMetadata(
+    equipmentNumber : Nat,
+    docId : Nat,
+    newDocType : Text,
+    additionalInfo : Text,
+  ) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can update document metadata");
     };
@@ -544,7 +748,7 @@ actor {
           func(doc) {
             if (doc.docId == docId) {
               {
-                doc with documentType = newDocType;
+                doc with documentType = newDocType; additionalInformation = additionalInfo;
               };
             } else {
               doc;
@@ -557,7 +761,6 @@ actor {
     };
   };
 
-  // Reports Methods
   public query ({ caller }) func getEquipmentList() : async [Equipment] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view equipment list");
@@ -595,3 +798,4 @@ actor {
     );
   };
 };
+

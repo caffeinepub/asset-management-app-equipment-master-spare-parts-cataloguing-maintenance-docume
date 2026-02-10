@@ -14,8 +14,17 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
+export interface Document {
+    documentType: string;
+    additionalInformation: string;
+    equipmentNumber: bigint;
+    filePath: ExternalBlob;
+    docId: bigint;
+    uploadDate: Time;
+}
 export interface CataloguingRecord {
     status: Variant_submitted_draft;
+    additionalInformation: string;
     equipmentNumber: bigint;
     templateName: string;
     attributes: Array<[string, string]>;
@@ -24,6 +33,7 @@ export interface CataloguingRecord {
 export type Time = bigint;
 export interface MaintenanceRecord {
     maintenanceStatus: Variant_scheduled_completed_overdue;
+    additionalInformation: string;
     equipmentNumber: bigint;
     maintenanceType: string;
     maintenanceId: bigint;
@@ -33,7 +43,9 @@ export interface MaintenanceRecord {
 export interface Equipment {
     model: string;
     manufacturer: string;
+    discipline: EngineeringDiscipline;
     purchaseDate: Time;
+    additionalInformation: string;
     name: string;
     equipmentNumber: bigint;
     serialNumber: string;
@@ -41,23 +53,28 @@ export interface Equipment {
     location: string;
 }
 export interface SparePart {
+    manufacturer: string;
     partNumber: bigint;
     supplier: string;
+    additionalInformation: string;
     name: string;
     equipmentNumber: bigint;
     description: string;
+    modelSerial: string;
     quantity: bigint;
-}
-export interface Document {
-    documentType: string;
-    equipmentNumber: bigint;
-    filePath: ExternalBlob;
-    docId: bigint;
-    uploadDate: Time;
+    attachment?: ExternalBlob;
+    partNo: string;
 }
 export interface UserProfile {
     name: string;
     department: string;
+}
+export enum EngineeringDiscipline {
+    mechanical = "mechanical",
+    piping = "piping",
+    electrical = "electrical",
+    unknown_ = "unknown",
+    instrumentation = "instrumentation"
 }
 export enum UserRole {
     admin = "admin",
@@ -75,15 +92,19 @@ export enum Variant_submitted_draft {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean): Promise<bigint | null>;
-    createEquipment(name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time): Promise<bigint>;
-    createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time): Promise<bigint | null>;
-    createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string): Promise<bigint | null>;
+    createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<bigint | null>;
+    createEquipment(name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<bigint>;
+    createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<bigint | null>;
+    createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<bigint | null>;
     deleteCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint): Promise<boolean>;
     deleteDocument(equipmentNumber: bigint, docId: bigint): Promise<boolean>;
     deleteEquipment(equipmentNumber: bigint): Promise<boolean>;
     deleteMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint): Promise<boolean>;
     deleteSparePart(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
+    findSparePartsByEquipmentTagNumber(equipmentTagNumber: bigint): Promise<Array<SparePart>>;
+    findSparePartsByManufacturer(manufacturer: string): Promise<Array<SparePart>>;
+    findSparePartsByModelSerial(modelSerial: string): Promise<Array<SparePart>>;
+    findSparePartsByPartNo(partNo: string): Promise<Array<SparePart>>;
     getAllEquipment(): Promise<Array<Equipment>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -98,10 +119,10 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean): Promise<boolean>;
-    updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string): Promise<boolean>;
-    updateEquipment(equipmentNumber: bigint, name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time): Promise<boolean>;
-    updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time): Promise<boolean>;
-    updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string): Promise<boolean>;
-    uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob): Promise<bigint | null>;
+    updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<boolean>;
+    updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string, additionalInfo: string): Promise<boolean>;
+    updateEquipment(equipmentNumber: bigint, name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<boolean>;
+    updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<boolean>;
+    updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<boolean>;
+    uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob, additionalInfo: string): Promise<bigint | null>;
 }

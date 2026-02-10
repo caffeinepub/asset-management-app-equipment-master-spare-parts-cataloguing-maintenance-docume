@@ -11,24 +11,26 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useGetAllEquipment, useUpdateEquipment, useDeleteEquipment } from '@/hooks/useQueries';
+import FormField from '@/components/forms/FormField';
+import { useGetEquipmentList, useUpdateEquipment, useDeleteEquipment } from '@/hooks/useQueries';
+import { toast } from 'sonner';
 import { ArrowLeft, Loader2, Pencil, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/dates';
-import { toast } from 'sonner';
 import type { Equipment } from '@/backend';
-import FormField from '@/components/forms/FormField';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { DISCIPLINE_OPTIONS, disciplineToLabel } from '@/lib/disciplines';
+import { EngineeringDiscipline } from '@/backend';
 
 export default function EquipmentListPage() {
   const navigate = useNavigate();
-  const { data: equipment, isLoading } = useGetAllEquipment();
+  const { data: equipment, isLoading } = useGetEquipmentList();
   const updateEquipment = useUpdateEquipment();
   const deleteEquipment = useDeleteEquipment();
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
-  const [formData, setFormData] = useState({
+  const [editFormData, setEditFormData] = useState({
     name: '',
     location: '',
     manufacturer: '',
@@ -36,58 +38,69 @@ export default function EquipmentListPage() {
     serialNumber: '',
     purchaseDate: '',
     warrantyExpiry: '',
+    additionalInformation: '',
+    discipline: EngineeringDiscipline.unknown_,
   });
 
-  const handleEdit = (item: Equipment) => {
-    setSelectedEquipment(item);
-    setFormData({
-      name: item.name,
-      location: item.location,
-      manufacturer: item.manufacturer,
-      model: item.model,
-      serialNumber: item.serialNumber,
-      purchaseDate: new Date(Number(item.purchaseDate) / 1000000).toISOString().split('T')[0],
-      warrantyExpiry: new Date(Number(item.warrantyExpiry) / 1000000).toISOString().split('T')[0],
+  const handleEdit = (eq: Equipment) => {
+    setSelectedEquipment(eq);
+    setEditFormData({
+      name: eq.name,
+      location: eq.location,
+      manufacturer: eq.manufacturer,
+      model: eq.model,
+      serialNumber: eq.serialNumber,
+      purchaseDate: eq.purchaseDate ? new Date(Number(eq.purchaseDate) / 1000000).toISOString().split('T')[0] : '',
+      warrantyExpiry: eq.warrantyExpiry ? new Date(Number(eq.warrantyExpiry) / 1000000).toISOString().split('T')[0] : '',
+      additionalInformation: eq.additionalInformation || '',
+      discipline: eq.discipline || EngineeringDiscipline.unknown_,
     });
     setEditDialogOpen(true);
   };
 
-  const handleDelete = (item: Equipment) => {
-    setSelectedEquipment(item);
+  const handleDelete = (eq: Equipment) => {
+    setSelectedEquipment(eq);
     setDeleteDialogOpen(true);
   };
 
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditChange = (field: string, value: string) => {
+    setEditFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
+  const handleDisciplineChange = (value: string) => {
+    setEditFormData((prev) => ({ ...prev, discipline: value as EngineeringDiscipline }));
+  };
+
+  const handleUpdateSubmit = async () => {
     if (!selectedEquipment) return;
 
-    const purchaseDate = formData.purchaseDate
-      ? BigInt(new Date(formData.purchaseDate).getTime() * 1000000)
-      : BigInt(0);
-    const warrantyExpiry = formData.warrantyExpiry
-      ? BigInt(new Date(formData.warrantyExpiry).getTime() * 1000000)
-      : BigInt(0);
+    const purchaseTime = editFormData.purchaseDate
+      ? new Date(editFormData.purchaseDate).getTime() * 1000000
+      : 0;
+    const warrantyTime = editFormData.warrantyExpiry
+      ? new Date(editFormData.warrantyExpiry).getTime() * 1000000
+      : 0;
 
     updateEquipment.mutate(
       {
         equipmentNumber: selectedEquipment.equipmentNumber,
-        name: formData.name,
-        location: formData.location,
-        manufacturer: formData.manufacturer,
-        model: formData.model,
-        serial: formData.serialNumber,
-        purchase: purchaseDate,
-        warranty: warrantyExpiry,
+        name: editFormData.name,
+        location: editFormData.location,
+        manufacturer: editFormData.manufacturer,
+        model: editFormData.model,
+        serial: editFormData.serialNumber,
+        purchase: BigInt(purchaseTime),
+        warranty: BigInt(warrantyTime),
+        additionalInfo: editFormData.additionalInformation,
+        discipline: editFormData.discipline,
       },
       {
         onSuccess: (success) => {
           if (success) {
             toast.success('Equipment updated successfully');
             setEditDialogOpen(false);
-            setSelectedEquipment(null);
           } else {
-            toast.error('Failed to update equipment');
+            toast.error('Equipment not found');
           }
         },
         onError: () => {
@@ -105,9 +118,8 @@ export default function EquipmentListPage() {
         if (success) {
           toast.success('Equipment deleted successfully');
           setDeleteDialogOpen(false);
-          setSelectedEquipment(null);
         } else {
-          toast.error('Failed to delete equipment');
+          toast.error('Equipment not found');
         }
       },
       onError: () => {
@@ -121,7 +133,7 @@ export default function EquipmentListPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Equipment List</h1>
-          <p className="text-muted-foreground mt-1">View all equipment records</p>
+          <p className="text-muted-foreground mt-1">View and manage all equipment records</p>
         </div>
         <Button variant="outline" onClick={() => navigate({ to: '/' })}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -135,41 +147,45 @@ export default function EquipmentListPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
+            <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : equipment && equipment.length > 0 ? (
-            <div className="rounded-md border">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Equipment #</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Discipline</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Manufacturer</TableHead>
                     <TableHead>Model</TableHead>
                     <TableHead>Serial Number</TableHead>
-                    <TableHead>Manufacturer</TableHead>
-                    <TableHead>Location</TableHead>
                     <TableHead>Purchase Date</TableHead>
+                    <TableHead>Warranty Expiry</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {equipment.map((item) => (
-                    <TableRow key={item.equipmentNumber.toString()}>
-                      <TableCell className="font-medium">{item.equipmentNumber.toString()}</TableCell>
-                      <TableCell>{item.name}</TableCell>
-                      <TableCell>{item.model || '-'}</TableCell>
-                      <TableCell>{item.serialNumber || '-'}</TableCell>
-                      <TableCell>{item.manufacturer}</TableCell>
-                      <TableCell>{item.location}</TableCell>
-                      <TableCell>{formatDate(item.purchaseDate)}</TableCell>
+                  {equipment.map((eq) => (
+                    <TableRow key={eq.equipmentNumber.toString()}>
+                      <TableCell className="font-medium">{eq.equipmentNumber.toString()}</TableCell>
+                      <TableCell>{eq.name}</TableCell>
+                      <TableCell>{disciplineToLabel(eq.discipline)}</TableCell>
+                      <TableCell>{eq.location}</TableCell>
+                      <TableCell>{eq.manufacturer}</TableCell>
+                      <TableCell>{eq.model}</TableCell>
+                      <TableCell>{eq.serialNumber}</TableCell>
+                      <TableCell>{eq.purchaseDate ? formatDate(eq.purchaseDate) : '-'}</TableCell>
+                      <TableCell>{eq.warrantyExpiry ? formatDate(eq.warrantyExpiry) : '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleEdit(item)}>
-                            <Pencil className="h-4 w-4" />
+                          <Button size="sm" variant="outline" onClick={() => handleEdit(eq)}>
+                            <Pencil className="h-3 w-3" />
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDelete(item)}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                          <Button size="sm" variant="outline" onClick={() => handleDelete(eq)}>
+                            <Trash2 className="h-3 w-3" />
                           </Button>
                         </div>
                       </TableCell>
@@ -179,9 +195,9 @@ export default function EquipmentListPage() {
               </Table>
             </div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">
-              No equipment records found. Create your first equipment record to get started.
-            </div>
+            <p className="text-center py-8 text-muted-foreground">
+              No equipment found. Create your first equipment record to get started.
+            </p>
           )}
         </CardContent>
       </Card>
@@ -193,89 +209,103 @@ export default function EquipmentListPage() {
             <DialogTitle>Edit Equipment</DialogTitle>
             <DialogDescription>Update equipment details below</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateSubmit} className="space-y-4">
+          <div className="space-y-4 py-4">
             <FormField label="Equipment Name" required>
               <input
                 type="text"
-                value={formData.name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="Enter equipment name"
+                value={editFormData.name}
+                onChange={(e) => handleEditChange('name', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </FormField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Model">
-                <input
-                  type="text"
-                  value={formData.model}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, model: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="Enter model"
-                />
-              </FormField>
-
-              <FormField label="Serial Number">
-                <input
-                  type="text"
-                  value={formData.serialNumber}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, serialNumber: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  placeholder="Enter serial number"
-                />
-              </FormField>
-            </div>
-
-            <FormField label="Manufacturer" required>
-              <input
-                type="text"
-                value={formData.manufacturer}
-                onChange={(e) => setFormData((prev) => ({ ...prev, manufacturer: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="Enter manufacturer"
-              />
+            <FormField label="Discipline">
+              <select
+                value={editFormData.discipline}
+                onChange={(e) => handleDisciplineChange(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value={EngineeringDiscipline.unknown_}>Select discipline</option>
+                {DISCIPLINE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </FormField>
 
             <FormField label="Location" required>
               <input
                 type="text"
-                value={formData.location}
-                onChange={(e) => setFormData((prev) => ({ ...prev, location: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                placeholder="Enter location"
+                value={editFormData.location}
+                onChange={(e) => handleEditChange('location', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </FormField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Purchase Date">
-                <input
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, purchaseDate: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </FormField>
+            <FormField label="Manufacturer" required>
+              <input
+                type="text"
+                value={editFormData.manufacturer}
+                onChange={(e) => handleEditChange('manufacturer', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
 
-              <FormField label="Warranty Expiry">
-                <input
-                  type="date"
-                  value={formData.warrantyExpiry}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, warrantyExpiry: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </FormField>
-            </div>
+            <FormField label="Model">
+              <input
+                type="text"
+                value={editFormData.model}
+                onChange={(e) => handleEditChange('model', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={updateEquipment.isPending}>
-                {updateEquipment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+            <FormField label="Serial Number">
+              <input
+                type="text"
+                value={editFormData.serialNumber}
+                onChange={(e) => handleEditChange('serialNumber', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
+
+            <FormField label="Purchase Date">
+              <input
+                type="date"
+                value={editFormData.purchaseDate}
+                onChange={(e) => handleEditChange('purchaseDate', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
+
+            <FormField label="Warranty Expiry">
+              <input
+                type="date"
+                value={editFormData.warrantyExpiry}
+                onChange={(e) => handleEditChange('warrantyExpiry', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
+
+            <FormField label="Additional Information">
+              <textarea
+                value={editFormData.additionalInformation}
+                onChange={(e) => handleEditChange('additionalInformation', e.target.value)}
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter any additional information about this equipment"
+              />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSubmit} disabled={updateEquipment.isPending}>
+              {updateEquipment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Equipment
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -284,7 +314,7 @@ export default function EquipmentListPage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Equipment"
-        description={`Are you sure you want to delete "${selectedEquipment?.name}"? This will also delete all related spare parts, cataloguing records, maintenance records, and documents. This action cannot be undone.`}
+        description="Are you sure you want to delete this equipment? This will also delete all associated spare parts, cataloguing records, maintenance records, and documents. This action cannot be undone."
         onConfirm={confirmDelete}
         confirmText="Delete"
         isDestructive

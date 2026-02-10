@@ -28,6 +28,7 @@ export default function CataloguingPage() {
   const [materialDescription, setMaterialDescription] = useState('');
   const [templateName, setTemplateName] = useState('');
   const [attributeValues, setAttributeValues] = useState<Record<string, string>>({});
+  const [additionalInformation, setAdditionalInformation] = useState('');
 
   const [editMode, setEditMode] = useState(false);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -65,6 +66,7 @@ export default function CataloguingPage() {
           templateName,
           attributes,
           isDraft,
+          additionalInfo: additionalInformation,
         },
         {
           onSuccess: (success) => {
@@ -91,6 +93,7 @@ export default function CataloguingPage() {
           templateName,
           attributes,
           isDraft,
+          additionalInfo: additionalInformation,
         },
         {
           onSuccess: (result) => {
@@ -115,6 +118,7 @@ export default function CataloguingPage() {
     setMaterialDescription('');
     setTemplateName('');
     setAttributeValues({});
+    setAdditionalInformation('');
     setEditMode(false);
     setEditingIndex(null);
   };
@@ -127,6 +131,7 @@ export default function CataloguingPage() {
       attrs[key] = value;
     });
     setAttributeValues(attrs);
+    setAdditionalInformation(record.additionalInformation || '');
     setEditMode(true);
     setEditingIndex(index);
   };
@@ -254,6 +259,15 @@ export default function CataloguingPage() {
                   ))}
                 </div>
               )}
+
+              <FormField label="Additional Information">
+                <textarea
+                  value={additionalInformation}
+                  onChange={(e) => setAdditionalInformation(e.target.value)}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  placeholder="Enter any additional information about this cataloguing record"
+                />
+              </FormField>
 
               <div className="flex gap-3 pt-4">
                 {editMode && (

@@ -1,13 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Fix the equipment creation flow so authenticated users can create equipment successfully, and provide clear, actionable error messages when creation fails (especially for auth/access-control issues).
+**Goal:** Add an “Additional Information” text field to all core record types and a “Discipline” dropdown for Equipment, ensuring data persists across upgrades and is supported end-to-end in the UI and APIs.
 
 **Planned changes:**
-- Fix the backend `createEquipment` authorization/access-control logic so a signed-in Internet Identity user can create equipment and receive a new `equipmentNumber`.
-- Update the frontend Equipment Master submission flow to surface the real underlying error from `createEquipment` (e.g., unauthorized vs. trap) instead of always showing “Failed to create equipment”.
-- Prevent anonymous users from submitting the Equipment Master form and show a clear message that sign-in is required to save equipment.
-- Harden actor/access-control initialization handling so initialization failures are surfaced to the UI and the app uses the correct actor after login/logout (avoiding stale identity causing authorization failures).
-- Ensure the Equipment List updates to include newly created equipment without requiring a hard refresh.
+- Backend: Add a persistent `additionalInformation` text field to Equipment, SparePart, CataloguingRecord, MaintenanceRecord, and Document types; update all create/update/query methods to accept, store, and return it (default to `""` when omitted).
+- Backend: Add a persistent `discipline` field to Equipment with allowed values MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; update equipment create/update/query methods and safely handle empty/unknown values for legacy data.
+- Backend: Implement upgrade-safe migration so existing stable records receive default values for the new fields without losing existing data.
+- Frontend: Add an “Additional Information” multiline textarea to all relevant create/edit forms (Equipment, Spare Parts, Cataloguing, Maintenance, Documents) and persist via updated backend APIs.
+- Frontend: Add a “Discipline” dropdown to Equipment Master create flow (and surface it in equipment list/edit flows) with the exact four options.
+- Frontend: Update React Query hooks and backend type usage so all affected CRUD operations include the new fields without TypeScript/runtime mismatches.
 
-**User-visible outcome:** Signed-in users can save new equipment from the Equipment Master form and immediately see it in the Equipment List; if they’re signed out or initialization/auth fails, the UI explains the specific reason and guides them to sign in or retry.
+**User-visible outcome:** Users can enter and view “Additional Information” on all supported record create/edit pages, and select/view/edit an Equipment “Discipline” value from a fixed dropdown; existing records remain intact after upgrade with blank defaults for new fields.

@@ -1,40 +1,77 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
+  "summary": "Application with spare parts section and enhanced search; needs an additional information box on every page/record and an Equipment Master dropdown for discipline categories.",
   "architectural_notes": [],
   "known_issues": [
-    "User cannot save equipment; system shows error 'Failed to create equipment'."
+    "Build/deployment process hit an internal AI error when attempting to add the Additional Information box and dropdown updates."
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-fix-the-root-cause-of-equipment-creation-failing-so-a-signed-in-user-can-successfully-create-equipment-records-via-backend-createequipment-without-receiving-an-authorization-trap-or-other-error",
-      "title": "Fix the root cause of equipment creation failing so a signed-in user can successfully create equipment records via backend createEquipment without receiving an authorization trap or other error.",
+      "id": "feature-add-an-additional-information-input-multiline-text-area-to-every-relevant-frontend-page-where-a-record-is-created-edited-and-persist-it-via-the-updated-backend-apis-this-includes-at-minimum-equipment-master-equipment-edit-flows-spare-parts-create-edit-dialogs-cataloguing-create-edit-maintenance-create-edit-and-documents-metadata-create-edit",
+      "title": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
       "reqIds": [
-        "REQ-1"
+        "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-improve-frontend-error-handling-for-equipment-creation-so-the-toast-shows-the-real-underlying-error-e-g-unauthorized-vs-other-backend-traps-instead-of-always-showing-only-failed-to-create-equipment-and-guide-the-user-to-sign-in-when-the-error-is-authentication-authorization-related",
-      "title": "Improve frontend error handling for equipment creation so the toast shows the real underlying error (e.g., unauthorized vs. other backend traps) instead of always showing only \"Failed to create equipment\", and guide the user to sign in when the error is authentication/authorization related.",
+      "id": "feature-add-a-discipline-dropdown-to-the-equipment-master-creation-form-with-the-exact-options-mechanical-electrical-instrumentation-piping-persist-the-selection-to-the-backend-and-display-edit-it-in-equipment-listing-edit-flows",
+      "title": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
       "reqIds": [
-        "REQ-2"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-harden-actor-access-control-initialization-so-failures-in-the-access-control-initialization-step-do-not-silently-break-mutations-surface-initialization-failures-to-the-ui-and-ensure-the-app-can-recover-after-login-logout-changes",
-      "title": "Harden actor/access-control initialization so failures in the access-control initialization step do not silently break mutations; surface initialization failures to the UI and ensure the app can recover after login/logout changes.",
+      "id": "feature-update-frontend-react-query-hooks-and-the-generated-backend-type-usage-so-that-all-crud-mutations-queries-include-the-new-fields-additionalinformation-and-discipline-without-typescript-errors-or-runtime-mismatches",
+      "title": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
       "reqIds": [
-        "REQ-3"
+        "REQ-6"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "Fix equipment creation failure (\"Failed to create equipment\")",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Add an 'Additional Information' box on every page/record.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Add Equipment Master dropdown with options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Add a persistent \"additionalInformation\" text field to all core record types (Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document) in the Motoko canister, and update all create/update/query methods so this field is stored and returned with each record.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Add a persistent \"discipline\" field to Equipment records in the Motoko canister, restricting values to: \"MECHANICAL\", \"ELECTRICAL\", \"INSTRUMENTATION\", \"PIPING\" (and safely handling empty/unknown values for migrated legacy records). Update equipment create/update/query methods accordingly.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Implement a conditional data migration for existing stable state so legacy records receive default values for the new fields (additionalInformation and discipline). Ensure upgrades do not lose existing data.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Add Additional Information field across all records and add Discipline dropdown in Equipment Master",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

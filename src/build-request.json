@@ -1,71 +1,140 @@
 {
   "kind": "build_request",
-  "title": "Fix equipment creation failure (\"Failed to create equipment\")",
-  "priority": "high",
+  "title": "Add Additional Information field across all records and add Discipline dropdown in Equipment Master",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Fix the root cause of equipment creation failing so a signed-in user can successfully create equipment records via backend createEquipment without receiving an authorization trap or other error.",
-      "target": "both",
+      "text": "Add a persistent \"additionalInformation\" text field to all core record types (Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document) in the Motoko canister, and update all create/update/query methods so this field is stored and returned with each record.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "I CNNOT SAVE EQUIPMENT IT OS SHOWING ME FAILED TO CREATE EQUIPMENT"
+          "i need additional info box in every record",
+          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
         ]
       },
       "acceptanceCriteria": [
-        "When a user is authenticated with Internet Identity, submitting the Equipment Master form successfully creates an equipment record and returns a new equipmentNumber.",
-        "The equipment record appears in the Equipment List after creation (without requiring a hard refresh).",
-        "Creating equipment does not fail due to missing/incorrect access-control initialization for normal authenticated users.",
-        "Anonymous (not signed-in) users cannot create equipment and receive a clear, non-generic error message in the UI (see REQ-2)."
+        "Backend types for Equipment, SparePart, CataloguingRecord, MaintenanceRecord, and Document include an additionalInformation text field",
+        "All relevant create/update methods accept an additionalInformation parameter and persist it",
+        "All relevant get/list/search query methods return additionalInformation with the records",
+        "If additionalInformation is omitted by the frontend, backend behavior defaults it to an empty string (\"\"), without trapping"
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Improve frontend error handling for equipment creation so the toast shows the real underlying error (e.g., unauthorized vs. other backend traps) instead of always showing only \"Failed to create equipment\", and guide the user to sign in when the error is authentication/authorization related.",
-      "target": "frontend",
+      "text": "Add a persistent \"discipline\" field to Equipment records in the Motoko canister, restricting values to: \"MECHANICAL\", \"ELECTRICAL\", \"INSTRUMENTATION\", \"PIPING\" (and safely handling empty/unknown values for migrated legacy records). Update equipment create/update/query methods accordingly.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-6"
         ],
         "quotes": [
-          "I CNNOT SAVE EQUIPMENT IT OS SHOWING ME FAILED TO CREATE EQUIPMENT"
+          "drop down in equipment master as MECHANICAL, ELECTRICAL INSTRUMENTATION ,PIPING"
         ]
       },
       "acceptanceCriteria": [
-        "If createEquipment fails, the UI displays an error toast that includes a specific reason when available (e.g., \"Unauthorized: Only users can create equipment\").",
-        "If the user is not authenticated (anonymous actor), the Equipment Master page prevents submission and displays a clear English message indicating the user must sign in to save equipment.",
-        "The existing success toast and form reset behavior remains unchanged on successful creation."
+        "Equipment type includes a discipline field",
+        "createEquipment and updateEquipment accept and store discipline",
+        "getEquipment and equipment list queries return discipline",
+        "Backend validates discipline against the allowed set or stores a safe fallback (e.g., empty string) for invalid values without crashing"
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Harden actor/access-control initialization so failures in the access-control initialization step do not silently break mutations; surface initialization failures to the UI and ensure the app can recover after login/logout changes.",
-      "target": "frontend",
+      "text": "Implement a conditional data migration for existing stable state so legacy records receive default values for the new fields (additionalInformation and discipline). Ensure upgrades do not lose existing data.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "FAILED TO CREATE EQUIPMENT"
+          "i need additional info box in every record",
+          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
         ]
       },
       "acceptanceCriteria": [
-        "If the call that initializes access control during actor creation fails, the app shows a user-facing English error indicating initialization failed and prompts the user to retry/login again.",
-        "After login/logout, queries and mutations use the correct actor for the current identity (no stale actor causing authorization failures)."
+        "On upgrade, existing Equipment records have discipline set to a default (empty string) and additionalInformation set to empty string",
+        "On upgrade, existing SparePart/Cataloguing/Maintenance/Document records have additionalInformation set to empty string",
+        "No existing records are deleted or overwritten aside from adding defaults for new fields",
+        "Upgrade succeeds without trapping for canisters that already have persisted data"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6",
+          "msg-8"
+        ],
+        "quotes": [
+          "i need additional info box in every record",
+          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Each create/edit form for Equipment, Spare Parts, Cataloguing records, Maintenance records, and Documents includes a labeled textarea: \"Additional Information\"",
+        "Submitting any create/edit form persists the Additional Information text and it is visible after reload/refetch",
+        "Existing UI behavior remains unchanged when Additional Information is left blank",
+        "All user-facing labels/placeholder text are in English"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "drop down in equipment master as MECHANICAL, ELECTRICAL INSTRUMENTATION ,PIPING"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Equipment Master page includes a select/dropdown labeled \"Discipline\" with the four options exactly as provided",
+        "Creating equipment sends the selected discipline to the backend and it is returned on subsequent fetches",
+        "Equipment list/edit UI surfaces the discipline value for existing equipment (including blank for legacy/migrated records)",
+        "All user-facing text is in English"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6",
+          "msg-8"
+        ],
+        "quotes": [
+          "i need additional info box in every record",
+          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Frontend builds successfully with no TypeScript errors related to backend types or actor method signatures",
+        "All affected hooks (create/update for equipment, spare parts, cataloguing, maintenance, documents) pass the new fields",
+        "Queries/refetches continue to work and UI updates after mutations as before"
       ]
     }
   ],
   "constraints": [
-    "Do not modify files under frontend/src/hooks/useInternetIdentity.ts or other paths listed in frontend.immutablePaths.",
-    "Keep all backend logic in the single Motoko actor (backend/main.mo); add backend/migration.mo only if state schema changes require migration."
+    "Backend must remain a single Motoko actor with all logic in backend/main.mo",
+    "Do not edit any files under frontend/src/components/ui or any paths listed in frontend.immutablePaths (compose them instead)",
+    "Use English for any user-facing text",
+    "No external databases or third-party auth providers (Internet Identity only)"
   ],
   "nonGoals": [
-    "Adding new equipment fields or changing the equipment data model beyond what is required to fix the save failure.",
-    "Implementing third-party authentication providers (only Internet Identity is supported).",
-    "Adding real-time updates or websocket-based synchronization."
+    "Redesigning navigation, routing, or adding new pages beyond inserting the requested fields",
+    "Changing existing search behavior or adding new search filters unrelated to the requested fields",
+    "Adding new roles/permissions beyond the current access control model"
   ],
   "imageRequirements": {
     "required": [],

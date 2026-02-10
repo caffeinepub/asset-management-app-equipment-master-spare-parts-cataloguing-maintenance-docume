@@ -40,6 +40,7 @@ export default function MaintenancePage() {
     status: Variant_scheduled_completed_overdue.scheduled,
     lastMaintenanceDate: '',
     nextMaintenanceDate: '',
+    additionalInformation: '',
   });
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -50,6 +51,7 @@ export default function MaintenancePage() {
     status: Variant_scheduled_completed_overdue.scheduled,
     lastMaintenanceDate: '',
     nextMaintenanceDate: '',
+    additionalInformation: '',
   });
 
   const { data: maintenanceRecords, isLoading } = useGetMaintenanceByEquipment(viewEquipment);
@@ -92,6 +94,7 @@ export default function MaintenancePage() {
         status: formData.status,
         lastDate,
         nextDate,
+        additionalInfo: formData.additionalInformation,
       },
       {
         onSuccess: (maintenanceId) => {
@@ -102,6 +105,7 @@ export default function MaintenancePage() {
               status: Variant_scheduled_completed_overdue.scheduled,
               lastMaintenanceDate: '',
               nextMaintenanceDate: '',
+              additionalInformation: '',
             });
           } else {
             toast.error('Equipment not found');
@@ -119,8 +123,13 @@ export default function MaintenancePage() {
     setEditFormData({
       maintenanceType: record.maintenanceType,
       status: record.maintenanceStatus,
-      lastMaintenanceDate: new Date(Number(record.lastMaintenanceDate) / 1000000).toISOString().split('T')[0],
-      nextMaintenanceDate: new Date(Number(record.nextMaintenanceDate) / 1000000).toISOString().split('T')[0],
+      lastMaintenanceDate: record.lastMaintenanceDate
+        ? new Date(Number(record.lastMaintenanceDate) / 1000000).toISOString().split('T')[0]
+        : '',
+      nextMaintenanceDate: record.nextMaintenanceDate
+        ? new Date(Number(record.nextMaintenanceDate) / 1000000).toISOString().split('T')[0]
+        : '',
+      additionalInformation: record.additionalInformation || '',
     });
     setEditDialogOpen(true);
   };
@@ -130,10 +139,19 @@ export default function MaintenancePage() {
     setDeleteDialogOpen(true);
   };
 
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEditChange = (field: string, value: string) => {
+    setEditFormData((prev) => ({ ...prev, [field]: value }));
+  };
 
-    if (!selectedRecord || !viewEquipment) return;
+  const handleEditStatusChange = (value: string) => {
+    setEditFormData((prev) => ({
+      ...prev,
+      status: value as Variant_scheduled_completed_overdue,
+    }));
+  };
+
+  const handleUpdateSubmit = async () => {
+    if (!selectedRecord) return;
 
     const lastDate = editFormData.lastMaintenanceDate
       ? BigInt(new Date(editFormData.lastMaintenanceDate).getTime() * 1000000)
@@ -144,21 +162,21 @@ export default function MaintenancePage() {
 
     updateMaintenance.mutate(
       {
-        equipmentNumber: viewEquipment,
+        equipmentNumber: selectedRecord.equipmentNumber,
         maintenanceId: selectedRecord.maintenanceId,
         maintType: editFormData.maintenanceType,
         status: editFormData.status,
         lastDate,
         nextDate,
+        additionalInfo: editFormData.additionalInformation,
       },
       {
         onSuccess: (success) => {
           if (success) {
             toast.success('Maintenance record updated successfully');
             setEditDialogOpen(false);
-            setSelectedRecord(null);
           } else {
-            toast.error('Failed to update maintenance record');
+            toast.error('Maintenance record not found');
           }
         },
         onError: () => {
@@ -169,11 +187,11 @@ export default function MaintenancePage() {
   };
 
   const confirmDelete = () => {
-    if (!selectedRecord || !viewEquipment) return;
+    if (!selectedRecord) return;
 
     deleteMaintenance.mutate(
       {
-        equipmentNumber: viewEquipment,
+        equipmentNumber: selectedRecord.equipmentNumber,
         maintenanceId: selectedRecord.maintenanceId,
       },
       {
@@ -181,9 +199,8 @@ export default function MaintenancePage() {
           if (success) {
             toast.success('Maintenance record deleted successfully');
             setDeleteDialogOpen(false);
-            setSelectedRecord(null);
           } else {
-            toast.error('Failed to delete maintenance record');
+            toast.error('Maintenance record not found');
           }
         },
         onError: () => {
@@ -193,12 +210,25 @@ export default function MaintenancePage() {
     );
   };
 
+  const getStatusBadge = (status: Variant_scheduled_completed_overdue) => {
+    switch (status) {
+      case Variant_scheduled_completed_overdue.scheduled:
+        return <Badge variant="secondary">Scheduled</Badge>;
+      case Variant_scheduled_completed_overdue.completed:
+        return <Badge variant="default">Completed</Badge>;
+      case Variant_scheduled_completed_overdue.overdue:
+        return <Badge variant="destructive">Overdue</Badge>;
+      default:
+        return <Badge variant="secondary">Unknown</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Maintenance</h1>
-          <p className="text-muted-foreground mt-1">Manage preventive maintenance and reliability data</p>
+          <h1 className="text-3xl font-bold tracking-tight">Maintenance Records</h1>
+          <p className="text-muted-foreground mt-1">Track and manage equipment maintenance</p>
         </div>
         <Button variant="outline" onClick={() => navigate({ to: '/' })}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -206,42 +236,40 @@ export default function MaintenancePage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Create Maintenance Record</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <FormField label="Equipment Number" required>
-                <EquipmentLookup value={selectedEquipment} onChange={setSelectedEquipment} />
-              </FormField>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Create Maintenance Record</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <FormField label="Equipment Number" required>
+                  <EquipmentLookup value={selectedEquipment} onChange={setSelectedEquipment} />
+                </FormField>
 
-              <FormField label="Maintenance Type" required>
-                <select
-                  value={formData.maintenanceType}
-                  onChange={(e) => handleChange('maintenanceType', e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value="">Select type</option>
-                  <option value="Preventive">Preventive</option>
-                  <option value="Breakdown">Breakdown</option>
-                </select>
-              </FormField>
+                <FormField label="Maintenance Type" required>
+                  <input
+                    type="text"
+                    value={formData.maintenanceType}
+                    onChange={(e) => handleChange('maintenanceType', e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Enter maintenance type"
+                  />
+                </FormField>
 
-              <FormField label="Status">
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleStatusChange(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <option value={Variant_scheduled_completed_overdue.scheduled}>Scheduled</option>
-                  <option value={Variant_scheduled_completed_overdue.completed}>Completed</option>
-                  <option value={Variant_scheduled_completed_overdue.overdue}>Overdue</option>
-                </select>
-              </FormField>
+                <FormField label="Status">
+                  <select
+                    value={formData.status}
+                    onChange={(e) => handleStatusChange(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value={Variant_scheduled_completed_overdue.scheduled}>Scheduled</option>
+                    <option value={Variant_scheduled_completed_overdue.completed}>Completed</option>
+                    <option value={Variant_scheduled_completed_overdue.overdue}>Overdue</option>
+                  </select>
+                </FormField>
 
-              <div className="grid gap-4 sm:grid-cols-2">
                 <FormField label="Last Maintenance Date">
                   <input
                     type="date"
@@ -259,115 +287,120 @@ export default function MaintenancePage() {
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </FormField>
-              </div>
 
-              <Button type="submit" disabled={createMaintenance.isPending} className="w-full">
-                {createMaintenance.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Maintenance Record
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <FormField label="Additional Information">
+                  <textarea
+                    value={formData.additionalInformation}
+                    onChange={(e) => handleChange('additionalInformation', e.target.value)}
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    placeholder="Enter any additional information about this maintenance record"
+                  />
+                </FormField>
 
+                <Button type="submit" disabled={createMaintenance.isPending} className="w-full">
+                  {createMaintenance.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Maintenance Record
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>View Records</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField label="Select Equipment">
+                <EquipmentLookup value={viewEquipment} onChange={setViewEquipment} />
+              </FormField>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {viewEquipment && (
         <Card>
           <CardHeader>
-            <CardTitle>View Maintenance Records</CardTitle>
+            <CardTitle>Maintenance Records for Equipment #{viewEquipment.toString()}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField label="Select Equipment">
-              <EquipmentLookup value={viewEquipment} onChange={setViewEquipment} />
-            </FormField>
-
-            {viewEquipment && (
-              <>
-                {isLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                  </div>
-                ) : maintenanceRecords && maintenanceRecords.length > 0 ? (
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Next Date</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {maintenanceRecords.map((record) => (
-                          <TableRow key={record.maintenanceId.toString()}>
-                            <TableCell className="font-medium">{record.maintenanceId.toString()}</TableCell>
-                            <TableCell>{record.maintenanceType}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={
-                                  record.maintenanceStatus === Variant_scheduled_completed_overdue.completed
-                                    ? 'default'
-                                    : record.maintenanceStatus === Variant_scheduled_completed_overdue.overdue
-                                      ? 'destructive'
-                                      : 'secondary'
-                                }
-                              >
-                                {record.maintenanceStatus}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{formatDate(record.nextMaintenanceDate)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="ghost" onClick={() => handleEdit(record)}>
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button size="sm" variant="ghost" onClick={() => handleDelete(record)}>
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    No maintenance records found for this equipment.
-                  </div>
-                )}
-              </>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : maintenanceRecords && maintenanceRecords.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Maintenance ID</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Maintenance</TableHead>
+                      <TableHead>Next Maintenance</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {maintenanceRecords.map((record) => (
+                      <TableRow key={record.maintenanceId.toString()}>
+                        <TableCell className="font-medium">{record.maintenanceId.toString()}</TableCell>
+                        <TableCell>{record.maintenanceType}</TableCell>
+                        <TableCell>{getStatusBadge(record.maintenanceStatus)}</TableCell>
+                        <TableCell>
+                          {record.lastMaintenanceDate ? formatDate(record.lastMaintenanceDate) : '-'}
+                        </TableCell>
+                        <TableCell>
+                          {record.nextMaintenanceDate ? formatDate(record.nextMaintenanceDate) : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleEdit(record)}>
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleDelete(record)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-center py-8 text-muted-foreground">
+                No maintenance records found for this equipment.
+              </p>
             )}
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Maintenance Record</DialogTitle>
             <DialogDescription>Update maintenance record details below</DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleUpdateSubmit} className="space-y-4">
+          <div className="space-y-4 py-4">
             <FormField label="Maintenance Type" required>
-              <select
+              <input
+                type="text"
                 value={editFormData.maintenanceType}
-                onChange={(e) => setEditFormData((prev) => ({ ...prev, maintenanceType: e.target.value }))}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <option value="">Select type</option>
-                <option value="Preventive">Preventive</option>
-                <option value="Breakdown">Breakdown</option>
-              </select>
+                onChange={(e) => handleEditChange('maintenanceType', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
             </FormField>
 
             <FormField label="Status">
               <select
                 value={editFormData.status}
-                onChange={(e) =>
-                  setEditFormData((prev) => ({ ...prev, status: e.target.value as Variant_scheduled_completed_overdue }))
-                }
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                onChange={(e) => handleEditStatusChange(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value={Variant_scheduled_completed_overdue.scheduled}>Scheduled</option>
                 <option value={Variant_scheduled_completed_overdue.completed}>Completed</option>
@@ -375,36 +408,42 @@ export default function MaintenancePage() {
               </select>
             </FormField>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Last Maintenance Date">
-                <input
-                  type="date"
-                  value={editFormData.lastMaintenanceDate}
-                  onChange={(e) => setEditFormData((prev) => ({ ...prev, lastMaintenanceDate: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </FormField>
+            <FormField label="Last Maintenance Date">
+              <input
+                type="date"
+                value={editFormData.lastMaintenanceDate}
+                onChange={(e) => handleEditChange('lastMaintenanceDate', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
 
-              <FormField label="Next Maintenance Date">
-                <input
-                  type="date"
-                  value={editFormData.nextMaintenanceDate}
-                  onChange={(e) => setEditFormData((prev) => ({ ...prev, nextMaintenanceDate: e.target.value }))}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                />
-              </FormField>
-            </div>
+            <FormField label="Next Maintenance Date">
+              <input
+                type="date"
+                value={editFormData.nextMaintenanceDate}
+                onChange={(e) => handleEditChange('nextMaintenanceDate', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </FormField>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={updateMaintenance.isPending}>
-                {updateMaintenance.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </form>
+            <FormField label="Additional Information">
+              <textarea
+                value={editFormData.additionalInformation}
+                onChange={(e) => handleEditChange('additionalInformation', e.target.value)}
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter any additional information about this maintenance record"
+              />
+            </FormField>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdateSubmit} disabled={updateMaintenance.isPending}>
+              {updateMaintenance.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Update Record
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -413,7 +452,7 @@ export default function MaintenancePage() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         title="Delete Maintenance Record"
-        description={`Are you sure you want to delete this maintenance record (ID: ${selectedRecord?.maintenanceId.toString()})? This action cannot be undone.`}
+        description="Are you sure you want to delete this maintenance record? This action cannot be undone."
         onConfirm={confirmDelete}
         confirmText="Delete"
         isDestructive
