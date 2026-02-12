@@ -43,6 +43,7 @@ export interface Equipment {
   'serialNumber' : string,
   'warrantyExpiry' : Time,
   'location' : string,
+  'equipmentTagNumber' : string,
 }
 export type ExternalBlob = Uint8Array;
 export interface MaintenanceRecord {
@@ -114,6 +115,7 @@ export interface _SERVICE {
       string,
       string,
       string,
+      string,
       Time,
       Time,
       string,
@@ -155,7 +157,7 @@ export interface _SERVICE {
   'deleteMaintenanceRecord' : ActorMethod<[bigint, bigint], boolean>,
   'deleteSparePart' : ActorMethod<[bigint, bigint], boolean>,
   'findSparePartsByEquipmentTagNumber' : ActorMethod<
-    [bigint],
+    [string],
     Array<SparePart>
   >,
   'findSparePartsByManufacturer' : ActorMethod<[string], Array<SparePart>>,
@@ -173,6 +175,7 @@ export interface _SERVICE {
   'getEquipmentList' : ActorMethod<[], Array<Equipment>>,
   'getMaintenanceByEquipment' : ActorMethod<[bigint], Array<MaintenanceRecord>>,
   'getMaintenanceDueReport' : ActorMethod<[], Array<MaintenanceRecord>>,
+  'getNextEquipmentNumber' : ActorMethod<[], bigint>,
   'getSparePartsByEquipment' : ActorMethod<[bigint], Array<SparePart>>,
   'getSparePartsReport' : ActorMethod<[], Array<SparePart>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
@@ -189,6 +192,7 @@ export interface _SERVICE {
   'updateEquipment' : ActorMethod<
     [
       bigint,
+      string,
       string,
       string,
       string,

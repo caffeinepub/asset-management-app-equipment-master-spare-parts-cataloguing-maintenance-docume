@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -14,7 +15,7 @@ import {
 import FormField from '@/components/forms/FormField';
 import { useGetEquipmentList, useUpdateEquipment, useDeleteEquipment } from '@/hooks/useQueries';
 import { toast } from 'sonner';
-import { ArrowLeft, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Pencil, Trash2, Search } from 'lucide-react';
 import { formatDate } from '@/lib/dates';
 import type { Equipment } from '@/backend';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -30,8 +31,11 @@ export default function EquipmentListPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [disciplineFilter, setDisciplineFilter] = useState<string>('all');
   const [editFormData, setEditFormData] = useState({
     name: '',
+    equipmentTagNumber: '',
     location: '',
     manufacturer: '',
     model: '',
@@ -42,10 +46,41 @@ export default function EquipmentListPage() {
     discipline: EngineeringDiscipline.unknown_,
   });
 
+  // Filter equipment based on search query and discipline
+  const filteredEquipment = useMemo(() => {
+    if (!equipment) return [];
+
+    let filtered = equipment;
+
+    // Apply discipline filter
+    if (disciplineFilter !== 'all') {
+      filtered = filtered.filter((eq) => eq.discipline === disciplineFilter);
+    }
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filtered = filtered.filter((eq) => {
+        return (
+          eq.equipmentNumber.toString().includes(query) ||
+          (eq.equipmentTagNumber && eq.equipmentTagNumber.toLowerCase().includes(query)) ||
+          eq.name.toLowerCase().includes(query) ||
+          eq.location.toLowerCase().includes(query) ||
+          eq.manufacturer.toLowerCase().includes(query) ||
+          (eq.model && eq.model.toLowerCase().includes(query)) ||
+          (eq.serialNumber && eq.serialNumber.toLowerCase().includes(query))
+        );
+      });
+    }
+
+    return filtered;
+  }, [equipment, searchQuery, disciplineFilter]);
+
   const handleEdit = (eq: Equipment) => {
     setSelectedEquipment(eq);
     setEditFormData({
       name: eq.name,
+      equipmentTagNumber: eq.equipmentTagNumber || '',
       location: eq.location,
       manufacturer: eq.manufacturer,
       model: eq.model,
@@ -85,6 +120,7 @@ export default function EquipmentListPage() {
       {
         equipmentNumber: selectedEquipment.equipmentNumber,
         name: editFormData.name,
+        equipmentTagNumber: editFormData.equipmentTagNumber,
         location: editFormData.location,
         manufacturer: editFormData.manufacturer,
         model: editFormData.model,
@@ -128,6 +164,10 @@ export default function EquipmentListPage() {
     });
   };
 
+  const hasEquipment = equipment && equipment.length > 0;
+  const hasFilteredResults = filteredEquipment.length > 0;
+  const isFiltering = searchQuery.trim() !== '' || disciplineFilter !== 'all';
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -146,58 +186,101 @@ export default function EquipmentListPage() {
           <CardTitle>All Equipment</CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by equipment #, tag number, name, location, manufacturer, model, or serial number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <div className="w-full sm:w-48">
+              <select
+                value={disciplineFilter}
+                onChange={(e) => setDisciplineFilter(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="all">All Disciplines</option>
+                {DISCIPLINE_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           {isLoading ? (
             <div className="flex justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
-          ) : equipment && equipment.length > 0 ? (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Equipment #</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Discipline</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Manufacturer</TableHead>
-                    <TableHead>Model</TableHead>
-                    <TableHead>Serial Number</TableHead>
-                    <TableHead>Purchase Date</TableHead>
-                    <TableHead>Warranty Expiry</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {equipment.map((eq) => (
-                    <TableRow key={eq.equipmentNumber.toString()}>
-                      <TableCell className="font-medium">{eq.equipmentNumber.toString()}</TableCell>
-                      <TableCell>{eq.name}</TableCell>
-                      <TableCell>{disciplineToLabel(eq.discipline)}</TableCell>
-                      <TableCell>{eq.location}</TableCell>
-                      <TableCell>{eq.manufacturer}</TableCell>
-                      <TableCell>{eq.model}</TableCell>
-                      <TableCell>{eq.serialNumber}</TableCell>
-                      <TableCell>{eq.purchaseDate ? formatDate(eq.purchaseDate) : '-'}</TableCell>
-                      <TableCell>{eq.warrantyExpiry ? formatDate(eq.warrantyExpiry) : '-'}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => handleEdit(eq)}>
-                            <Pencil className="h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => handleDelete(eq)}>
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </TableCell>
+          ) : hasEquipment ? (
+            hasFilteredResults ? (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Equipment #</TableHead>
+                      <TableHead>Tag Number</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Discipline</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Manufacturer</TableHead>
+                      <TableHead>Model</TableHead>
+                      <TableHead>Serial Number</TableHead>
+                      <TableHead>Purchase Date</TableHead>
+                      <TableHead>Warranty Expiry</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEquipment.map((eq) => (
+                      <TableRow key={eq.equipmentNumber.toString()}>
+                        <TableCell className="font-medium">{eq.equipmentNumber.toString()}</TableCell>
+                        <TableCell>{eq.equipmentTagNumber || '-'}</TableCell>
+                        <TableCell>{eq.name}</TableCell>
+                        <TableCell>{disciplineToLabel(eq.discipline)}</TableCell>
+                        <TableCell>{eq.location}</TableCell>
+                        <TableCell>{eq.manufacturer}</TableCell>
+                        <TableCell>{eq.model || '-'}</TableCell>
+                        <TableCell>{eq.serialNumber || '-'}</TableCell>
+                        <TableCell>{eq.purchaseDate ? formatDate(eq.purchaseDate) : '-'}</TableCell>
+                        <TableCell>{eq.warrantyExpiry ? formatDate(eq.warrantyExpiry) : '-'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(eq)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(eq)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {isFiltering ? (
+                  <div>
+                    <p className="font-medium">No equipment matched your search criteria</p>
+                    <p className="text-sm mt-1">Try adjusting your search or filter settings</p>
+                  </div>
+                ) : (
+                  'No equipment records found.'
+                )}
+              </div>
+            )
           ) : (
-            <p className="text-center py-8 text-muted-foreground">
-              No equipment found. Create your first equipment record to get started.
-            </p>
+            <div className="text-center py-8 text-muted-foreground">
+              No equipment records found. Create your first equipment record to get started.
+            </div>
           )}
         </CardContent>
       </Card>
@@ -216,6 +299,17 @@ export default function EquipmentListPage() {
                 value={editFormData.name}
                 onChange={(e) => handleEditChange('name', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter equipment name"
+              />
+            </FormField>
+
+            <FormField label="Equipment Tag Number">
+              <input
+                type="text"
+                value={editFormData.equipmentTagNumber}
+                onChange={(e) => handleEditChange('equipmentTagNumber', e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter equipment tag number"
               />
             </FormField>
 
@@ -240,6 +334,7 @@ export default function EquipmentListPage() {
                 value={editFormData.location}
                 onChange={(e) => handleEditChange('location', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter location"
               />
             </FormField>
 
@@ -249,6 +344,7 @@ export default function EquipmentListPage() {
                 value={editFormData.manufacturer}
                 onChange={(e) => handleEditChange('manufacturer', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter manufacturer"
               />
             </FormField>
 
@@ -258,6 +354,7 @@ export default function EquipmentListPage() {
                 value={editFormData.model}
                 onChange={(e) => handleEditChange('model', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter model"
               />
             </FormField>
 
@@ -267,6 +364,7 @@ export default function EquipmentListPage() {
                 value={editFormData.serialNumber}
                 onChange={(e) => handleEditChange('serialNumber', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter serial number"
               />
             </FormField>
 
@@ -293,7 +391,7 @@ export default function EquipmentListPage() {
                 value={editFormData.additionalInformation}
                 onChange={(e) => handleEditChange('additionalInformation', e.target.value)}
                 className="flex min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Enter any additional information about this equipment"
+                placeholder="Enter any additional information"
               />
             </FormField>
           </div>
@@ -303,7 +401,7 @@ export default function EquipmentListPage() {
             </Button>
             <Button onClick={handleUpdateSubmit} disabled={updateEquipment.isPending}>
               {updateEquipment.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Update Equipment
+              Save Changes
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -313,9 +411,9 @@ export default function EquipmentListPage() {
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete Equipment"
-        description="Are you sure you want to delete this equipment? This will also delete all associated spare parts, cataloguing records, maintenance records, and documents. This action cannot be undone."
         onConfirm={confirmDelete}
+        title="Delete Equipment"
+        description={`Are you sure you want to delete "${selectedEquipment?.name}"? This action cannot be undone and will also delete all associated spare parts, cataloguing records, maintenance records, and documents.`}
         confirmText="Delete"
         isDestructive
       />

@@ -2,36 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-an-additional-information-input-multiline-text-area-to-every-relevant-frontend-page-where-a-record-is-created-edited-and-persist-it-via-the-updated-backend-apis-this-includes-at-minimum-equipment-master-equipment-edit-flows-spare-parts-create-edit-dialogs-cataloguing-create-edit-maintenance-create-edit-and-documents-metadata-create-edit",
-      "featureTitle": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
+      "featureId": "feature-update-the-equipment-master-create-equipment-ui-to-clearly-indicate-that-the-equipment-number-is-generated-automatically-and-show-the-next-number-to-the-user",
+      "featureTitle": "Update the Equipment Master (create equipment) UI to clearly indicate that the equipment number is generated automatically and show the next number to the user.",
       "files": [
-        "frontend/src/pages/CataloguingPage.tsx",
-        "frontend/src/pages/DocumentsPage.tsx",
-        "frontend/src/pages/EquipmentListPage.tsx",
-        "frontend/src/pages/EquipmentMasterPage.tsx",
-        "frontend/src/pages/MaintenancePage.tsx",
-        "frontend/src/pages/SparePartsPage.tsx"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-discipline-dropdown-to-the-equipment-master-creation-form-with-the-exact-options-mechanical-electrical-instrumentation-piping-persist-the-selection-to-the-backend-and-display-edit-it-in-equipment-listing-edit-flows",
-      "featureTitle": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
-      "files": [
-        "frontend/src/lib/disciplines.ts",
-        "frontend/src/pages/EquipmentListPage.tsx",
+        "frontend/src/hooks/useQueries.ts",
         "frontend/src/pages/EquipmentMasterPage.tsx"
       ],
       "components": [
@@ -44,21 +18,15 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-5"
+        "REQ-2"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-frontend-react-query-hooks-and-the-generated-backend-type-usage-so-that-all-crud-mutations-queries-include-the-new-fields-additionalinformation-and-discipline-without-typescript-errors-or-runtime-mismatches",
-      "featureTitle": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
+      "featureId": "feature-add-an-equipment-search-capability-on-the-equipment-list-page-with-expanded-search-options-across-multiple-fields",
+      "featureTitle": "Add an equipment search capability on the Equipment List page with expanded search options across multiple fields.",
       "files": [
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/pages/CataloguingPage.tsx",
-        "frontend/src/pages/DocumentsPage.tsx",
-        "frontend/src/pages/EquipmentListPage.tsx",
-        "frontend/src/pages/EquipmentMasterPage.tsx",
-        "frontend/src/pages/MaintenancePage.tsx",
-        "frontend/src/pages/SparePartsPage.tsx"
+        "frontend/src/pages/EquipmentListPage.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -70,7 +38,27 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-6"
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-improve-equipment-selection-ux-wherever-the-equipmentlookup-dropdown-is-used-by-adding-a-basic-search-filter-for-equipment-options",
+      "featureTitle": "Improve equipment selection UX wherever the EquipmentLookup dropdown is used by adding a basic search/filter for equipment options.",
+      "files": [
+        "frontend/src/components/EquipmentLookup.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-4"
       ],
       "confidence": "high"
     }

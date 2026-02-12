@@ -1,143 +1,108 @@
 {
   "kind": "build_request",
-  "title": "Add Additional Information field across all records and add Discipline dropdown in Equipment Master",
+  "title": "Automatic equipment number generation and enhanced equipment search",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add a persistent \"additionalInformation\" text field to all core record types (Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document) in the Motoko canister, and update all create/update/query methods so this field is stored and returned with each record.",
+      "text": "Expose the next auto-generated equipment number from the backend so the frontend can display it before equipment creation.",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-1"
         ],
         "quotes": [
-          "i need additional info box in every record",
-          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
+          "there should be automatics equipment number generation and search option for equipment also"
         ]
       },
       "acceptanceCriteria": [
-        "Backend types for Equipment, SparePart, CataloguingRecord, MaintenanceRecord, and Document include an additionalInformation text field",
-        "All relevant create/update methods accept an additionalInformation parameter and persist it",
-        "All relevant get/list/search query methods return additionalInformation with the records",
-        "If additionalInformation is omitted by the frontend, backend behavior defaults it to an empty string (\"\"), without trapping"
+        "Backend provides a new authenticated query method (user permission) that returns the next equipment number that would be assigned on create.",
+        "Calling the new method does not modify any existing equipment data or counters.",
+        "Unauthorized callers receive the same style of authorization failure as other equipment APIs."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add a persistent \"discipline\" field to Equipment records in the Motoko canister, restricting values to: \"MECHANICAL\", \"ELECTRICAL\", \"INSTRUMENTATION\", \"PIPING\" (and safely handling empty/unknown values for migrated legacy records). Update equipment create/update/query methods accordingly.",
-      "target": "backend",
+      "text": "Update the Equipment Master (create equipment) UI to clearly indicate that the equipment number is generated automatically and show the next number to the user.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6"
+          "msg-1"
         ],
         "quotes": [
-          "drop down in equipment master as MECHANICAL, ELECTRICAL INSTRUMENTATION ,PIPING"
+          "there should be automatics equipment number generation and search option for equipment also"
         ]
       },
       "acceptanceCriteria": [
-        "Equipment type includes a discipline field",
-        "createEquipment and updateEquipment accept and store discipline",
-        "getEquipment and equipment list queries return discipline",
-        "Backend validates discipline against the allowed set or stores a safe fallback (e.g., empty string) for invalid values without crashing"
+        "The create-equipment form shows an \"Equipment # (auto-generated)\" field that is read-only/disabled.",
+        "The displayed value is fetched from the backend and updates appropriately after a successful create (so the next number increments).",
+        "After creating equipment, the success toast/message includes the created equipment number returned by the backend."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Implement a conditional data migration for existing stable state so legacy records receive default values for the new fields (additionalInformation and discipline). Ensure upgrades do not lose existing data.",
-      "target": "backend",
+      "text": "Add an equipment search capability on the Equipment List page with expanded search options across multiple fields.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-0",
+          "msg-1"
         ],
         "quotes": [
-          "i need additional info box in every record",
-          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
+          "Yes and i need search option in equipment also, and search options should me more",
+          "there should be automatics equipment number generation and search option for equipment also"
         ]
       },
       "acceptanceCriteria": [
-        "On upgrade, existing Equipment records have discipline set to a default (empty string) and additionalInformation set to empty string",
-        "On upgrade, existing SparePart/Cataloguing/Maintenance/Document records have additionalInformation set to empty string",
-        "No existing records are deleted or overwritten aside from adding defaults for new fields",
-        "Upgrade succeeds without trapping for canisters that already have persisted data"
+        "Equipment List page includes a search input that filters the table results without requiring a page reload.",
+        "Search can match at least: equipment number, equipment tag number, name, location, manufacturer, model, and serial number.",
+        "A discipline filter is available (e.g., dropdown) and can be combined with the text search.",
+        "When no records match the search/filter criteria, the page shows a clear empty state (English text) distinct from the initial \"no equipment records\" state."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
+      "text": "Improve equipment selection UX wherever the EquipmentLookup dropdown is used by adding a basic search/filter for equipment options.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-8"
+          "msg-0",
+          "msg-1"
         ],
         "quotes": [
-          "i need additional info box in every record",
-          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
+          "i need search option in equipment also, and search options should me more",
+          "search option for equipment also"
         ]
       },
       "acceptanceCriteria": [
-        "Each create/edit form for Equipment, Spare Parts, Cataloguing records, Maintenance records, and Documents includes a labeled textarea: \"Additional Information\"",
-        "Submitting any create/edit form persists the Additional Information text and it is visible after reload/refetch",
-        "Existing UI behavior remains unchanged when Additional Information is left blank",
-        "All user-facing labels/placeholder text are in English"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "drop down in equipment master as MECHANICAL, ELECTRICAL INSTRUMENTATION ,PIPING"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Equipment Master page includes a select/dropdown labeled \"Discipline\" with the four options exactly as provided",
-        "Creating equipment sends the selected discipline to the backend and it is returned on subsequent fetches",
-        "Equipment list/edit UI surfaces the discipline value for existing equipment (including blank for legacy/migrated records)",
-        "All user-facing text is in English"
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6",
-          "msg-8"
-        ],
-        "quotes": [
-          "i need additional info box in every record",
-          "iN EVERY PAGE I NEED BOCX OF ADDITIONAL INFORMATION"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Frontend builds successfully with no TypeScript errors related to backend types or actor method signatures",
-        "All affected hooks (create/update for equipment, spare parts, cataloguing, maintenance, documents) pass the new fields",
-        "Queries/refetches continue to work and UI updates after mutations as before"
+        "EquipmentLookup UI provides a way to type to filter the equipment options (by equipment number, tag number, and name).",
+        "Filtering does not change the selected equipment value unless the user explicitly selects a different option.",
+        "When the filter yields no matches, the UI indicates that no equipment matched the filter (English text)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with all logic in backend/main.mo",
-    "Do not edit any files under frontend/src/components/ui or any paths listed in frontend.immutablePaths (compose them instead)",
-    "Use English for any user-facing text",
-    "No external databases or third-party auth providers (Internet Identity only)"
+    "Backend must remain a single Motoko actor in backend/main.mo (no additional backend services).",
+    "Do not edit files under frontend/src/components/ui or any path listed in frontend.immutablePaths; compose existing UI components instead.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Redesigning navigation, routing, or adding new pages beyond inserting the requested fields",
-    "Changing existing search behavior or adding new search filters unrelated to the requested fields",
-    "Adding new roles/permissions beyond the current access control model"
+    "Add export functionality.",
+    "Add third-party authentication providers (only Internet Identity is supported).",
+    "Introduce external databases or non-Motoko backend code."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

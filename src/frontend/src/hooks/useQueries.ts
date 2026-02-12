@@ -4,6 +4,19 @@ import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Docume
 import { ExternalBlob, Variant_scheduled_completed_overdue, EngineeringDiscipline } from '@/backend';
 
 // Equipment queries
+export function useGetNextEquipmentNumber() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<bigint>({
+    queryKey: ['next-equipment-number'],
+    queryFn: async () => {
+      if (!actor) return BigInt(1);
+      return actor.getNextEquipmentNumber();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetAllEquipment() {
   const { actor, isFetching } = useActor();
 
@@ -37,6 +50,7 @@ export function useCreateEquipment() {
   return useMutation({
     mutationFn: async (data: {
       name: string;
+      equipmentTagNumber: string;
       location: string;
       manufacturer: string;
       model: string;
@@ -49,6 +63,7 @@ export function useCreateEquipment() {
       if (!actor) throw new Error('Actor not initialized');
       const result = await actor.createEquipment(
         data.name,
+        data.equipmentTagNumber,
         data.location,
         data.manufacturer,
         data.model,
@@ -64,9 +79,11 @@ export function useCreateEquipment() {
       // Invalidate and refetch equipment queries
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
+      queryClient.invalidateQueries({ queryKey: ['next-equipment-number'] });
       // Force refetch to ensure UI updates
       queryClient.refetchQueries({ queryKey: ['equipment'] });
       queryClient.refetchQueries({ queryKey: ['equipment-list'] });
+      queryClient.refetchQueries({ queryKey: ['next-equipment-number'] });
     },
   });
 }
@@ -79,6 +96,7 @@ export function useUpdateEquipment() {
     mutationFn: async (data: {
       equipmentNumber: bigint;
       name: string;
+      equipmentTagNumber: string;
       location: string;
       manufacturer: string;
       model: string;
@@ -92,6 +110,7 @@ export function useUpdateEquipment() {
       return actor.updateEquipment(
         data.equipmentNumber,
         data.name,
+        data.equipmentTagNumber,
         data.location,
         data.manufacturer,
         data.model,
@@ -252,13 +271,7 @@ export function useSearchSpareParts(criteria: {
 
       // If equipment tag number is provided, search by that first
       if (criteria.equipmentTagNumber && criteria.equipmentTagNumber.trim()) {
-        try {
-          const equipmentNumber = BigInt(criteria.equipmentTagNumber);
-          return await actor.findSparePartsByEquipmentTagNumber(equipmentNumber);
-        } catch {
-          // Invalid number format
-          return [];
-        }
+        return await actor.findSparePartsByEquipmentTagNumber(criteria.equipmentTagNumber.trim());
       }
 
       // Search by model/serial

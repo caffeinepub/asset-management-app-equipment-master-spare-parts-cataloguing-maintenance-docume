@@ -129,6 +129,7 @@ export interface Equipment {
     serialNumber: string;
     warrantyExpiry: Time;
     location: string;
+    equipmentTagNumber: string;
 }
 export interface _CaffeineStorageCreateCertificateResult {
     method: string;
@@ -186,7 +187,7 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<bigint | null>;
-    createEquipment(name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<bigint>;
+    createEquipment(name: string, equipmentTagNumber: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<bigint>;
     createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<bigint | null>;
     createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<bigint | null>;
     deleteCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint): Promise<boolean>;
@@ -194,7 +195,7 @@ export interface backendInterface {
     deleteEquipment(equipmentNumber: bigint): Promise<boolean>;
     deleteMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint): Promise<boolean>;
     deleteSparePart(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
-    findSparePartsByEquipmentTagNumber(equipmentTagNumber: bigint): Promise<Array<SparePart>>;
+    findSparePartsByEquipmentTagNumber(_equipmentTagNumber: string): Promise<Array<SparePart>>;
     findSparePartsByManufacturer(manufacturer: string): Promise<Array<SparePart>>;
     findSparePartsByModelSerial(modelSerial: string): Promise<Array<SparePart>>;
     findSparePartsByPartNo(partNo: string): Promise<Array<SparePart>>;
@@ -207,6 +208,7 @@ export interface backendInterface {
     getEquipmentList(): Promise<Array<Equipment>>;
     getMaintenanceByEquipment(equipmentNumber: bigint): Promise<Array<MaintenanceRecord>>;
     getMaintenanceDueReport(): Promise<Array<MaintenanceRecord>>;
+    getNextEquipmentNumber(): Promise<bigint>;
     getSparePartsByEquipment(equipmentNumber: bigint): Promise<Array<SparePart>>;
     getSparePartsReport(): Promise<Array<SparePart>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
@@ -214,7 +216,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<boolean>;
     updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string, additionalInfo: string): Promise<boolean>;
-    updateEquipment(equipmentNumber: bigint, name: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<boolean>;
+    updateEquipment(equipmentNumber: bigint, name: string, equipmentTagNumber: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<boolean>;
     updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<boolean>;
     updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<boolean>;
     uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob, additionalInfo: string): Promise<bigint | null>;
@@ -348,17 +350,17 @@ export class Backend implements backendInterface {
             return from_candid_opt_n7(this._uploadFile, this._downloadFile, result);
         }
     }
-    async createEquipment(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: Time, arg6: Time, arg7: string, arg8: EngineeringDiscipline): Promise<bigint> {
+    async createEquipment(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: Time, arg7: Time, arg8: string, arg9: EngineeringDiscipline): Promise<bigint> {
         if (this.processError) {
             try {
-                const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg8));
+                const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg8));
+            const result = await this.actor.createEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
             return result;
         }
     }
@@ -460,7 +462,7 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async findSparePartsByEquipmentTagNumber(arg0: bigint): Promise<Array<SparePart>> {
+    async findSparePartsByEquipmentTagNumber(arg0: string): Promise<Array<SparePart>> {
         if (this.processError) {
             try {
                 const result = await this.actor.findSparePartsByEquipmentTagNumber(arg0);
@@ -642,6 +644,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n36(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getNextEquipmentNumber(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getNextEquipmentNumber();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getNextEquipmentNumber();
+            return result;
+        }
+    }
     async getSparePartsByEquipment(arg0: bigint): Promise<Array<SparePart>> {
         if (this.processError) {
             try {
@@ -740,17 +756,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async updateEquipment(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: Time, arg7: Time, arg8: string, arg9: EngineeringDiscipline): Promise<boolean> {
+    async updateEquipment(arg0: bigint, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string, arg6: string, arg7: Time, arg8: Time, arg9: string, arg10: EngineeringDiscipline): Promise<boolean> {
         if (this.processError) {
             try {
-                const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
+                const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg10));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg9));
+            const result = await this.actor.updateEquipment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, to_candid_EngineeringDiscipline_n10(this._uploadFile, this._downloadFile, arg10));
             return result;
         }
     }
@@ -889,6 +905,7 @@ function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uin
     serialNumber: string;
     warrantyExpiry: _Time;
     location: string;
+    equipmentTagNumber: string;
 }): {
     model: string;
     manufacturer: string;
@@ -900,6 +917,7 @@ function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uin
     serialNumber: string;
     warrantyExpiry: Time;
     location: string;
+    equipmentTagNumber: string;
 } {
     return {
         model: value.model,
@@ -911,7 +929,8 @@ function from_candid_record_n22(_uploadFile: (file: ExternalBlob) => Promise<Uin
         equipmentNumber: value.equipmentNumber,
         serialNumber: value.serialNumber,
         warrantyExpiry: value.warrantyExpiry,
-        location: value.location
+        location: value.location,
+        equipmentTagNumber: value.equipmentTagNumber
     };
 }
 function from_candid_record_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

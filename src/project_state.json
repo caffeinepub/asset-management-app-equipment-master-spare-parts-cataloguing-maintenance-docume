@@ -1,34 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Application with spare parts section and enhanced search; needs an additional information box on every page/record and an Equipment Master dropdown for discipline categories.",
+  "summary": "Equipment management app; add equipment search (enhanced search options) and automatic equipment number generation.",
   "architectural_notes": [],
-  "known_issues": [
-    "Build/deployment process hit an internal AI error when attempting to add the Additional Information box and dropdown updates."
-  ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-add-an-additional-information-input-multiline-text-area-to-every-relevant-frontend-page-where-a-record-is-created-edited-and-persist-it-via-the-updated-backend-apis-this-includes-at-minimum-equipment-master-equipment-edit-flows-spare-parts-create-edit-dialogs-cataloguing-create-edit-maintenance-create-edit-and-documents-metadata-create-edit",
-      "title": "Add an \"Additional Information\" input (multiline text area) to every relevant frontend page where a record is created/edited, and persist it via the updated backend APIs. This includes at minimum: Equipment Master, Equipment edit flows, Spare Parts create/edit dialogs, Cataloguing create/edit, Maintenance create/edit, and Documents metadata create/edit.",
+      "id": "feature-update-the-equipment-master-create-equipment-ui-to-clearly-indicate-that-the-equipment-number-is-generated-automatically-and-show-the-next-number-to-the-user",
+      "title": "Update the Equipment Master (create equipment) UI to clearly indicate that the equipment number is generated automatically and show the next number to the user.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-equipment-search-capability-on-the-equipment-list-page-with-expanded-search-options-across-multiple-fields",
+      "title": "Add an equipment search capability on the Equipment List page with expanded search options across multiple fields.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-improve-equipment-selection-ux-wherever-the-equipmentlookup-dropdown-is-used-by-adding-a-basic-search-filter-for-equipment-options",
+      "title": "Improve equipment selection UX wherever the EquipmentLookup dropdown is used by adding a basic search/filter for equipment options.",
       "reqIds": [
         "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-discipline-dropdown-to-the-equipment-master-creation-form-with-the-exact-options-mechanical-electrical-instrumentation-piping-persist-the-selection-to-the-backend-and-display-edit-it-in-equipment-listing-edit-flows",
-      "title": "Add a Discipline dropdown to the Equipment Master creation form with the exact options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING; persist the selection to the backend and display/edit it in equipment listing/edit flows.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-frontend-react-query-hooks-and-the-generated-backend-type-usage-so-that-all-crud-mutations-queries-include-the-new-fields-additionalinformation-and-discipline-without-typescript-errors-or-runtime-mismatches",
-      "title": "Update frontend React Query hooks and the generated backend type usage so that all CRUD mutations/queries include the new fields (additionalInformation and discipline) without TypeScript errors or runtime mismatches.",
-      "reqIds": [
-        "REQ-6"
       ],
       "version": 1
     }
@@ -36,42 +34,32 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add an 'Additional Information' box on every page/record.",
+      "summary": "Add search functionality for equipment list/module",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Add Equipment Master dropdown with options: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING.",
+      "summary": "Expand/improve search options (more search filters/fields)",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Add a persistent \"additionalInformation\" text field to all core record types (Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document) in the Motoko canister, and update all create/update/query methods so this field is stored and returned with each record.",
-      "reqIds": [
-        "REQ-1"
-      ],
+      "summary": "Implement automatic equipment number generation",
+      "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-4",
-      "summary": "Add a persistent \"discipline\" field to Equipment records in the Motoko canister, restricting values to: \"MECHANICAL\", \"ELECTRICAL\", \"INSTRUMENTATION\", \"PIPING\" (and safely handling empty/unknown values for migrated legacy records). Update equipment create/update/query methods accordingly.",
+      "summary": "Expose the next auto-generated equipment number from the backend so the frontend can display it before equipment creation.",
       "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Implement a conditional data migration for existing stable state so legacy records receive default values for the new fields (additionalInformation and discipline). Ensure upgrades do not lose existing data.",
-      "reqIds": [
-        "REQ-3"
+        "REQ-1"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Add Additional Information field across all records and add Discipline dropdown in Equipment Master",
+  "projectName": "Automatic equipment number generation and enhanced equipment search",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

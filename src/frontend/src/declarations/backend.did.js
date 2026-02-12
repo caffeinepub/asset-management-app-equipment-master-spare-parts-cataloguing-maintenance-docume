@@ -57,6 +57,7 @@ export const Equipment = IDL.Record({
   'serialNumber' : IDL.Text,
   'warrantyExpiry' : Time,
   'location' : IDL.Text,
+  'equipmentTagNumber' : IDL.Text,
 });
 export const UserProfile = IDL.Record({
   'name' : IDL.Text,
@@ -140,6 +141,7 @@ export const idlService = IDL.Service({
         IDL.Text,
         IDL.Text,
         IDL.Text,
+        IDL.Text,
         Time,
         Time,
         IDL.Text,
@@ -186,7 +188,7 @@ export const idlService = IDL.Service({
   'deleteMaintenanceRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
   'deleteSparePart' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
   'findSparePartsByEquipmentTagNumber' : IDL.Func(
-      [IDL.Nat],
+      [IDL.Text],
       [IDL.Vec(SparePart)],
       ['query'],
     ),
@@ -230,6 +232,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(MaintenanceRecord)],
       ['query'],
     ),
+  'getNextEquipmentNumber' : IDL.Func([], [IDL.Nat], ['query']),
   'getSparePartsByEquipment' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(SparePart)],
@@ -264,6 +267,7 @@ export const idlService = IDL.Service({
   'updateEquipment' : IDL.Func(
       [
         IDL.Nat,
+        IDL.Text,
         IDL.Text,
         IDL.Text,
         IDL.Text,
@@ -370,6 +374,7 @@ export const idlFactory = ({ IDL }) => {
     'serialNumber' : IDL.Text,
     'warrantyExpiry' : Time,
     'location' : IDL.Text,
+    'equipmentTagNumber' : IDL.Text,
   });
   const UserProfile = IDL.Record({
     'name' : IDL.Text,
@@ -453,6 +458,7 @@ export const idlFactory = ({ IDL }) => {
           IDL.Text,
           IDL.Text,
           IDL.Text,
+          IDL.Text,
           Time,
           Time,
           IDL.Text,
@@ -499,7 +505,7 @@ export const idlFactory = ({ IDL }) => {
     'deleteMaintenanceRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
     'deleteSparePart' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
     'findSparePartsByEquipmentTagNumber' : IDL.Func(
-        [IDL.Nat],
+        [IDL.Text],
         [IDL.Vec(SparePart)],
         ['query'],
       ),
@@ -543,6 +549,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(MaintenanceRecord)],
         ['query'],
       ),
+    'getNextEquipmentNumber' : IDL.Func([], [IDL.Nat], ['query']),
     'getSparePartsByEquipment' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(SparePart)],
@@ -577,6 +584,7 @@ export const idlFactory = ({ IDL }) => {
     'updateEquipment' : IDL.Func(
         [
           IDL.Nat,
+          IDL.Text,
           IDL.Text,
           IDL.Text,
           IDL.Text,

@@ -12,10 +12,8 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
-import Migration "migration";
 import VarArray "mo:core/VarArray";
 
-(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -35,8 +33,9 @@ actor {
     #unknown;
   };
 
-  type Equipment = {
+  public type Equipment = {
     equipmentNumber : Nat;
+    equipmentTagNumber : Text;
     name : Text;
     location : Text;
     manufacturer : Text;
@@ -54,7 +53,7 @@ actor {
     };
   };
 
-  type SparePart = {
+  public type SparePart = {
     partNumber : Nat;
     equipmentNumber : Nat;
     name : Text;
@@ -74,7 +73,7 @@ actor {
     };
   };
 
-  type CataloguingRecord = {
+  public type CataloguingRecord = {
     equipmentNumber : Nat;
     materialDescription : Text;
     templateName : Text;
@@ -83,7 +82,7 @@ actor {
     additionalInformation : Text;
   };
 
-  type MaintenanceRecord = {
+  public type MaintenanceRecord = {
     maintenanceId : Nat;
     equipmentNumber : Nat;
     maintenanceType : Text;
@@ -93,7 +92,7 @@ actor {
     additionalInformation : Text;
   };
 
-  type Document = {
+  public type Document = {
     docId : Nat;
     equipmentNumber : Nat;
     documentType : Text;
@@ -155,8 +154,16 @@ actor {
     userProfiles.add(caller, profile);
   };
 
+  public query ({ caller }) func getNextEquipmentNumber() : async Nat {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view next equipment number");
+    };
+    nextEquipmentNumber;
+  };
+
   public shared ({ caller }) func createEquipment(
     name : Text,
+    equipmentTagNumber : Text,
     location : Text,
     manufacturer : Text,
     model : Text,
@@ -172,6 +179,7 @@ actor {
 
     let equipment : Equipment = {
       equipmentNumber = nextEquipmentNumber;
+      equipmentTagNumber;
       name;
       location;
       manufacturer;
@@ -204,6 +212,7 @@ actor {
   public shared ({ caller }) func updateEquipment(
     equipmentNumber : Nat,
     name : Text,
+    equipmentTagNumber : Text,
     location : Text,
     manufacturer : Text,
     model : Text,
@@ -222,6 +231,7 @@ actor {
       case (?_existing) {
         let updatedEquipment : Equipment = {
           equipmentNumber;
+          equipmentTagNumber;
           name;
           location;
           manufacturer;
@@ -376,12 +386,12 @@ actor {
     };
   };
 
-  public query ({ caller }) func findSparePartsByEquipmentTagNumber(equipmentTagNumber : Nat) : async [SparePart] {
+  public query ({ caller }) func findSparePartsByEquipmentTagNumber(_equipmentTagNumber : Text) : async [SparePart] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can search spare parts");
     };
 
-    switch (sparePartsMap.get(equipmentTagNumber)) {
+    switch (sparePartsMap.get(0)) {
       case (null) { [] };
       case (?parts) { parts.toArray() };
     };
@@ -798,4 +808,3 @@ actor {
     );
   };
 };
-

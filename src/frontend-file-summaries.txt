@@ -1,7 +1,7 @@
 {
-  "frontend/src/App.tsx": "Main application component with TanStack Router setup defining all routes and wrapping the app with ThemeProvider and Toaster for notifications.",
-  "frontend/src/pages/EquipmentMasterPage.tsx": "Equipment Master form that checks authentication status, disables form when user is not signed in, shows clear authentication alerts, displays specific error messages with sign-in prompts when mutations fail, includes discipline dropdown and additional information textarea.",
-  "frontend/src/pages/EquipmentListPage.tsx": "Equipment list page displaying all equipment records in a table with edit and delete actions per row, including edit dialog for updating equipment details and delete confirmation.",
+  "frontend/src/App.tsx": "Main application component with TanStack Router setup defining all routes including the new /import route and wrapping the app with ThemeProvider and Toaster for notifications.",
+  "frontend/src/pages/EquipmentMasterPage.tsx": "Equipment Master form with authentication checks, discipline dropdown, additional information textarea, auto-generated equipment number display field (read-only with help text), and Quick Actions sidebar with navigation to all major features including Import.",
+  "frontend/src/pages/EquipmentListPage.tsx": "Equipment list page with search input filtering by equipment #, tag number, name, location, manufacturer, model, and serial number, discipline dropdown filter, distinct empty states for no equipment vs no search results, and edit/delete actions per row.",
   "frontend/src/pages/SparePartsPage.tsx": "Spare parts management page with three tabs (Create, View by Equipment, Search) supporting file attachments with upload/download/remove functionality and advanced search filters for equipment tag number, model/serial, part number, and manufacturer with cross-equipment results display.",
   "frontend/src/pages/CataloguingPage.tsx": "Cataloguing page with template-based attribute forms, edit mode that loads existing records into the form for updates, and delete confirmation for cataloguing records.",
   "frontend/src/pages/MaintenancePage.tsx": "Maintenance records page with create form and view table, including edit and delete actions for each maintenance record with proper status badge rendering, confirmation dialogs, and additional information field support.",
@@ -9,11 +9,11 @@
   "frontend/src/pages/ReportsPage.tsx": "Reports screen with three tabs (Equipment List, Spare Parts by Equipment, Maintenance Due) displaying data in tables with export to CSV and PDF functionality for each report.",
   "frontend/src/components/PageLayout.tsx": "Shared page layout component providing consistent header with app title, main content area, and footer with attribution link to caffeine.ai.",
   "frontend/src/components/forms/FormField.tsx": "Reusable form field wrapper component providing consistent label styling, required indicator, help text, and error message display for all forms.",
-  "frontend/src/components/EquipmentLookup.tsx": "Reusable equipment lookup dropdown component that fetches all equipment records and displays them as selectable options with equipment number and name.",
-  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations including spare parts CRUD with attachment support and new search hooks for filtering spare parts by equipment tag number, model/serial, part number, and manufacturer.",
+  "frontend/src/components/EquipmentLookup.tsx": "Reusable equipment lookup dropdown component with type-to-filter capability using an overlay input that filters equipment by number, tag number, and name without changing the selected value, showing \"No equipment matched the filter\" when no results.",
+  "frontend/src/hooks/useQueries.ts": "React Query hooks for all backend operations including new useGetNextEquipmentNumber hook that fetches the auto-generated equipment number, with proper query invalidation for equipment CRUD operations, spare parts, cataloguing, maintenance, documents, and reports.",
   "frontend/src/lib/dates.ts": "Date utility functions for converting between backend Time (bigint nanoseconds) and JavaScript Date objects, plus formatting dates for display.",
   "frontend/src/lib/cataloguingTemplates.ts": "Client-side cataloguing template definitions for mechanical, electrical, instrumentation, and piping equipment with dynamic attribute fields (text, number, select inputs).",
-  "frontend/src/lib/exports.ts": "Export utility functions for generating CSV and PDF files client-side from report data without external services.",
+  "frontend/src/lib/exports.ts": "Export utility functions for generating CSV and PDF files client-side from report data, plus a new downloadCSVTemplate helper for generating import templates.",
   "frontend/src/lib/validation.ts": "Form validation helper functions for required fields, numbers, and email addresses with error message generation.",
   "frontend/src/index.css": "Global styles with OKLCH color system using warm earth tones (browns/ambers at hue 25) for primary palette, avoiding blue/purple, with proper light and dark mode support.",
   "frontend/tailwind.config.js": "Tailwind configuration with custom color tokens, Inter font family, custom border radius, and extended utilities for the asset management application design system.",
@@ -21,5 +21,8 @@
   "frontend/src/hooks/useActor.ts": "Actor initialization hook that only attempts access-control initialization when an admin token is present, exposes initialization errors and retry functionality, and properly invalidates queries on identity changes.",
   "frontend/src/lib/errors.ts": "Error normalization utility that extracts user-friendly messages from backend trap errors, detects unauthorized/authentication errors, and provides helper functions for error handling.",
   "frontend/src/components/AccessControlInitBanner.tsx": "Banner component that displays access-control initialization errors with retry and re-authentication options.",
-  "frontend/src/lib/files.ts": "Shared utility functions for converting browser File objects to ExternalBlob with upload progress tracking and formatting file sizes for display."
+  "frontend/src/lib/files.ts": "Shared utility functions for converting browser File objects to ExternalBlob with upload progress tracking and formatting file sizes for display.",
+  "frontend/src/pages/ImportPage.tsx": "Import page with tabbed interface for Equipment and Spare Parts CSV imports, file selection, preview, validation, batch processing with per-row error reporting, template downloads, and import results display.",
+  "frontend/src/lib/csvImport.ts": "CSV parsing utilities with support for quoted fields, row-level validation for Equipment and Spare Parts, date parsing to bigint time, and bigint number parsing helpers.",
+  "frontend/src/lib/importMappings.ts": "CSV column mapping definitions and transformation functions for Equipment and Spare Parts imports, including template headers, field aliases, and discipline enum conversion."
 }

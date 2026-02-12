@@ -8,6 +8,7 @@ import CataloguingPage from './pages/CataloguingPage';
 import MaintenancePage from './pages/MaintenancePage';
 import DocumentsPage from './pages/DocumentsPage';
 import ReportsPage from './pages/ReportsPage';
+import ImportPage from './pages/ImportPage';
 import PageLayout from './components/PageLayout';
 
 function RootLayout() {
@@ -64,6 +65,12 @@ const reportsRoute = createRoute({
   component: ReportsPage,
 });
 
+const importRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/import',
+  component: ImportPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   equipmentListRoute,
@@ -72,6 +79,7 @@ const routeTree = rootRoute.addChildren([
   maintenanceRoute,
   documentsRoute,
   reportsRoute,
+  importRoute,
 ]);
 
 const router = createRouter({ routeTree });
