@@ -1,73 +1,42 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-11T08:16:33.317Z",
+  "generatedAt": "2026-02-17T06:15:25.531Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 3,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Expose the next auto-generated equipment number from the backend so the frontend can display it before equipment creation.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
-      },
-      {
-        "id": "REQ-2",
-        "summary": "Update the Equipment Master (create equipment) UI to clearly indicate that the equipment number is generated automatically and show the next number to the user.",
+        "summary": "Create and publish a new draft deployment for the current Maintenance Hub codebase so the user can access a fresh, non-expired draft environment.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/EquipmentMasterPage.tsx"
+          "frontend/DRAFT_REBUILD_TRIGGER.md"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/pages/EquipmentMasterPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add an equipment search capability on the Equipment List page with expanded search options across multiple fields.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Improve equipment selection UX wherever the EquipmentLookup dropdown is used by adding a basic search/filter for equipment options.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/EquipmentLookup.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/EquipmentLookup.tsx"
+          "frontend/DRAFT_REBUILD_TRIGGER.md"
         ]
       }
     ]
   },
   "changedFiles": [
     "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/DRAFT_REBUILD_TRIGGER.md",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
-    "frontend/src/components/EquipmentLookup.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
-    "frontend/src/pages/EquipmentListPage.tsx",
-    "frontend/src/pages/EquipmentMasterPage.tsx",
+    "frontend/src/lib/productionChecks.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

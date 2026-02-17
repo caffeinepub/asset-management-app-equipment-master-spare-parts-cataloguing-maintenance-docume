@@ -24,7 +24,6 @@ export const UserRole = IDL.Variant({
   'user' : IDL.Null,
   'guest' : IDL.Null,
 });
-export const Time = IDL.Int;
 export const EngineeringDiscipline = IDL.Variant({
   'mechanical' : IDL.Null,
   'piping' : IDL.Null,
@@ -32,20 +31,7 @@ export const EngineeringDiscipline = IDL.Variant({
   'unknown' : IDL.Null,
   'instrumentation' : IDL.Null,
 });
-export const ExternalBlob = IDL.Vec(IDL.Nat8);
-export const SparePart = IDL.Record({
-  'manufacturer' : IDL.Text,
-  'partNumber' : IDL.Nat,
-  'supplier' : IDL.Text,
-  'additionalInformation' : IDL.Text,
-  'name' : IDL.Text,
-  'equipmentNumber' : IDL.Nat,
-  'description' : IDL.Text,
-  'modelSerial' : IDL.Text,
-  'quantity' : IDL.Nat,
-  'attachment' : IDL.Opt(ExternalBlob),
-  'partNo' : IDL.Text,
-});
+export const Time = IDL.Int;
 export const Equipment = IDL.Record({
   'model' : IDL.Text,
   'manufacturer' : IDL.Text,
@@ -71,6 +57,7 @@ export const CataloguingRecord = IDL.Record({
   'attributes' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
   'materialDescription' : IDL.Text,
 });
+export const ExternalBlob = IDL.Vec(IDL.Nat8);
 export const Document = IDL.Record({
   'documentType' : IDL.Text,
   'additionalInformation' : IDL.Text,
@@ -91,6 +78,19 @@ export const MaintenanceRecord = IDL.Record({
   'maintenanceId' : IDL.Nat,
   'nextMaintenanceDate' : Time,
   'lastMaintenanceDate' : Time,
+});
+export const SparePart = IDL.Record({
+  'manufacturer' : IDL.Text,
+  'partNumber' : IDL.Nat,
+  'supplier' : IDL.Text,
+  'additionalInformation' : IDL.Text,
+  'name' : IDL.Text,
+  'equipmentNumber' : IDL.Nat,
+  'description' : IDL.Text,
+  'modelSerial' : IDL.Text,
+  'quantity' : IDL.Nat,
+  'attachment' : IDL.Opt(ExternalBlob),
+  'partNo' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -122,123 +122,25 @@ export const idlService = IDL.Service({
   '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-  'createCataloguingRecord' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-        IDL.Bool,
-        IDL.Text,
-      ],
-      [IDL.Opt(IDL.Nat)],
-      [],
-    ),
-  'createEquipment' : IDL.Func(
-      [
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        Time,
-        Time,
-        IDL.Text,
-        EngineeringDiscipline,
-      ],
-      [IDL.Nat],
-      [],
-    ),
-  'createMaintenanceRecord' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Text,
-        IDL.Variant({
-          'scheduled' : IDL.Null,
-          'completed' : IDL.Null,
-          'overdue' : IDL.Null,
-        }),
-        Time,
-        Time,
-        IDL.Text,
-      ],
-      [IDL.Opt(IDL.Nat)],
-      [],
-    ),
-  'createSparePart' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Opt(ExternalBlob),
-        IDL.Text,
-      ],
-      [IDL.Opt(IDL.Nat)],
-      [],
-    ),
-  'deleteCataloguingRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
   'deleteDocument' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
   'deleteEquipment' : IDL.Func([IDL.Nat], [IDL.Bool], []),
-  'deleteMaintenanceRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
   'deleteSparePart' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
-  'findSparePartsByEquipmentTagNumber' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(SparePart)],
-      ['query'],
-    ),
-  'findSparePartsByManufacturer' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(SparePart)],
-      ['query'],
-    ),
-  'findSparePartsByModelSerial' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(SparePart)],
-      ['query'],
-    ),
-  'findSparePartsByPartNo' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(SparePart)],
-      ['query'],
-    ),
   'getAllEquipment' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
   'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
   'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-  'getCataloguingRecordsByEquipment' : IDL.Func(
+  'getCataloguingRecords' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(CataloguingRecord)],
       ['query'],
     ),
-  'getDocumentsByEquipment' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Vec(Document)],
-      ['query'],
-    ),
+  'getDocuments' : IDL.Func([IDL.Nat], [IDL.Vec(Document)], ['query']),
   'getEquipment' : IDL.Func([IDL.Nat], [IDL.Opt(Equipment)], ['query']),
-  'getEquipmentList' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
-  'getMaintenanceByEquipment' : IDL.Func(
+  'getMaintenanceRecords' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(MaintenanceRecord)],
       ['query'],
     ),
-  'getMaintenanceDueReport' : IDL.Func(
-      [],
-      [IDL.Vec(MaintenanceRecord)],
-      ['query'],
-    ),
-  'getNextEquipmentNumber' : IDL.Func([], [IDL.Nat], ['query']),
-  'getSparePartsByEquipment' : IDL.Func(
-      [IDL.Nat],
-      [IDL.Vec(SparePart)],
-      ['query'],
-    ),
-  'getSparePartsReport' : IDL.Func([], [IDL.Vec(SparePart)], ['query']),
+  'getSpareParts' : IDL.Func([IDL.Nat], [IDL.Vec(SparePart)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -246,80 +148,10 @@ export const idlService = IDL.Service({
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-  'updateCataloguingRecord' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-        IDL.Bool,
-        IDL.Text,
-      ],
-      [IDL.Bool],
-      [],
-    ),
-  'updateDocumentMetadata' : IDL.Func(
-      [IDL.Nat, IDL.Nat, IDL.Text, IDL.Text],
-      [IDL.Bool],
-      [],
-    ),
-  'updateEquipment' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        Time,
-        Time,
-        IDL.Text,
-        EngineeringDiscipline,
-      ],
-      [IDL.Bool],
-      [],
-    ),
-  'updateMaintenanceRecord' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Nat,
-        IDL.Text,
-        IDL.Variant({
-          'scheduled' : IDL.Null,
-          'completed' : IDL.Null,
-          'overdue' : IDL.Null,
-        }),
-        Time,
-        Time,
-        IDL.Text,
-      ],
-      [IDL.Bool],
-      [],
-    ),
-  'updateSparePart' : IDL.Func(
-      [
-        IDL.Nat,
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Nat,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Opt(ExternalBlob),
-        IDL.Text,
-      ],
-      [IDL.Bool],
-      [],
-    ),
-  'uploadDocument' : IDL.Func(
-      [IDL.Nat, IDL.Text, ExternalBlob, IDL.Text],
-      [IDL.Opt(IDL.Nat)],
-      [],
-    ),
+  'updateCataloguingRecord' : IDL.Func([CataloguingRecord], [IDL.Bool], []),
+  'updateEquipment' : IDL.Func([Equipment], [IDL.Bool], []),
+  'updateMaintenanceRecord' : IDL.Func([MaintenanceRecord], [IDL.Bool], []),
+  'updateSparePart' : IDL.Func([SparePart], [IDL.Bool], []),
 });
 
 export const idlInitArgs = [];
@@ -341,7 +173,6 @@ export const idlFactory = ({ IDL }) => {
     'user' : IDL.Null,
     'guest' : IDL.Null,
   });
-  const Time = IDL.Int;
   const EngineeringDiscipline = IDL.Variant({
     'mechanical' : IDL.Null,
     'piping' : IDL.Null,
@@ -349,20 +180,7 @@ export const idlFactory = ({ IDL }) => {
     'unknown' : IDL.Null,
     'instrumentation' : IDL.Null,
   });
-  const ExternalBlob = IDL.Vec(IDL.Nat8);
-  const SparePart = IDL.Record({
-    'manufacturer' : IDL.Text,
-    'partNumber' : IDL.Nat,
-    'supplier' : IDL.Text,
-    'additionalInformation' : IDL.Text,
-    'name' : IDL.Text,
-    'equipmentNumber' : IDL.Nat,
-    'description' : IDL.Text,
-    'modelSerial' : IDL.Text,
-    'quantity' : IDL.Nat,
-    'attachment' : IDL.Opt(ExternalBlob),
-    'partNo' : IDL.Text,
-  });
+  const Time = IDL.Int;
   const Equipment = IDL.Record({
     'model' : IDL.Text,
     'manufacturer' : IDL.Text,
@@ -388,6 +206,7 @@ export const idlFactory = ({ IDL }) => {
     'attributes' : IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
     'materialDescription' : IDL.Text,
   });
+  const ExternalBlob = IDL.Vec(IDL.Nat8);
   const Document = IDL.Record({
     'documentType' : IDL.Text,
     'additionalInformation' : IDL.Text,
@@ -408,6 +227,19 @@ export const idlFactory = ({ IDL }) => {
     'maintenanceId' : IDL.Nat,
     'nextMaintenanceDate' : Time,
     'lastMaintenanceDate' : Time,
+  });
+  const SparePart = IDL.Record({
+    'manufacturer' : IDL.Text,
+    'partNumber' : IDL.Nat,
+    'supplier' : IDL.Text,
+    'additionalInformation' : IDL.Text,
+    'name' : IDL.Text,
+    'equipmentNumber' : IDL.Nat,
+    'description' : IDL.Text,
+    'modelSerial' : IDL.Text,
+    'quantity' : IDL.Nat,
+    'attachment' : IDL.Opt(ExternalBlob),
+    'partNo' : IDL.Text,
   });
   
   return IDL.Service({
@@ -439,123 +271,25 @@ export const idlFactory = ({ IDL }) => {
     '_caffeineStorageUpdateGatewayPrincipals' : IDL.Func([], [], []),
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
-    'createCataloguingRecord' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-          IDL.Bool,
-          IDL.Text,
-        ],
-        [IDL.Opt(IDL.Nat)],
-        [],
-      ),
-    'createEquipment' : IDL.Func(
-        [
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          Time,
-          Time,
-          IDL.Text,
-          EngineeringDiscipline,
-        ],
-        [IDL.Nat],
-        [],
-      ),
-    'createMaintenanceRecord' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Text,
-          IDL.Variant({
-            'scheduled' : IDL.Null,
-            'completed' : IDL.Null,
-            'overdue' : IDL.Null,
-          }),
-          Time,
-          Time,
-          IDL.Text,
-        ],
-        [IDL.Opt(IDL.Nat)],
-        [],
-      ),
-    'createSparePart' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Opt(ExternalBlob),
-          IDL.Text,
-        ],
-        [IDL.Opt(IDL.Nat)],
-        [],
-      ),
-    'deleteCataloguingRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
     'deleteDocument' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
     'deleteEquipment' : IDL.Func([IDL.Nat], [IDL.Bool], []),
-    'deleteMaintenanceRecord' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
     'deleteSparePart' : IDL.Func([IDL.Nat, IDL.Nat], [IDL.Bool], []),
-    'findSparePartsByEquipmentTagNumber' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(SparePart)],
-        ['query'],
-      ),
-    'findSparePartsByManufacturer' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(SparePart)],
-        ['query'],
-      ),
-    'findSparePartsByModelSerial' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(SparePart)],
-        ['query'],
-      ),
-    'findSparePartsByPartNo' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(SparePart)],
-        ['query'],
-      ),
     'getAllEquipment' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
     'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
     'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
-    'getCataloguingRecordsByEquipment' : IDL.Func(
+    'getCataloguingRecords' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(CataloguingRecord)],
         ['query'],
       ),
-    'getDocumentsByEquipment' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(Document)],
-        ['query'],
-      ),
+    'getDocuments' : IDL.Func([IDL.Nat], [IDL.Vec(Document)], ['query']),
     'getEquipment' : IDL.Func([IDL.Nat], [IDL.Opt(Equipment)], ['query']),
-    'getEquipmentList' : IDL.Func([], [IDL.Vec(Equipment)], ['query']),
-    'getMaintenanceByEquipment' : IDL.Func(
+    'getMaintenanceRecords' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(MaintenanceRecord)],
         ['query'],
       ),
-    'getMaintenanceDueReport' : IDL.Func(
-        [],
-        [IDL.Vec(MaintenanceRecord)],
-        ['query'],
-      ),
-    'getNextEquipmentNumber' : IDL.Func([], [IDL.Nat], ['query']),
-    'getSparePartsByEquipment' : IDL.Func(
-        [IDL.Nat],
-        [IDL.Vec(SparePart)],
-        ['query'],
-      ),
-    'getSparePartsReport' : IDL.Func([], [IDL.Vec(SparePart)], ['query']),
+    'getSpareParts' : IDL.Func([IDL.Nat], [IDL.Vec(SparePart)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -563,80 +297,10 @@ export const idlFactory = ({ IDL }) => {
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
-    'updateCataloguingRecord' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Vec(IDL.Tuple(IDL.Text, IDL.Text)),
-          IDL.Bool,
-          IDL.Text,
-        ],
-        [IDL.Bool],
-        [],
-      ),
-    'updateDocumentMetadata' : IDL.Func(
-        [IDL.Nat, IDL.Nat, IDL.Text, IDL.Text],
-        [IDL.Bool],
-        [],
-      ),
-    'updateEquipment' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          Time,
-          Time,
-          IDL.Text,
-          EngineeringDiscipline,
-        ],
-        [IDL.Bool],
-        [],
-      ),
-    'updateMaintenanceRecord' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Nat,
-          IDL.Text,
-          IDL.Variant({
-            'scheduled' : IDL.Null,
-            'completed' : IDL.Null,
-            'overdue' : IDL.Null,
-          }),
-          Time,
-          Time,
-          IDL.Text,
-        ],
-        [IDL.Bool],
-        [],
-      ),
-    'updateSparePart' : IDL.Func(
-        [
-          IDL.Nat,
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Nat,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Opt(ExternalBlob),
-          IDL.Text,
-        ],
-        [IDL.Bool],
-        [],
-      ),
-    'uploadDocument' : IDL.Func(
-        [IDL.Nat, IDL.Text, ExternalBlob, IDL.Text],
-        [IDL.Opt(IDL.Nat)],
-        [],
-      ),
+    'updateCataloguingRecord' : IDL.Func([CataloguingRecord], [IDL.Bool], []),
+    'updateEquipment' : IDL.Func([Equipment], [IDL.Bool], []),
+    'updateMaintenanceRecord' : IDL.Func([MaintenanceRecord], [IDL.Bool], []),
+    'updateSparePart' : IDL.Func([SparePart], [IDL.Bool], []),
   });
 };
 

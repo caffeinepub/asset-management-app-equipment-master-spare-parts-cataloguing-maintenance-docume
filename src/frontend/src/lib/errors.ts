@@ -17,40 +17,49 @@ export function normalizeError(error: unknown): string {
   }
 
   // Handle objects with message property
-  if (typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
-    return extractErrorMessage(error.message);
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    return extractErrorMessage(String(error.message));
   }
 
   return 'An unexpected error occurred';
 }
 
 /**
- * Extracts meaningful error messages from backend trap messages
+ * Extracts and cleans error messages from backend trap errors
  */
 function extractErrorMessage(message: string): string {
-  // Check for "Unauthorized" messages
-  if (message.includes('Unauthorized')) {
-    // Extract the specific unauthorized message
-    const match = message.match(/Unauthorized: (.+?)(?:\n|$)/);
-    if (match) {
-      return match[1];
+  // Check for missing method errors (reject code 5)
+  if (message.includes('Canister has no update method') || message.includes('has no update method')) {
+    const methodMatch = message.match(/method ['"](\w+)['"]/);
+    const methodName = methodMatch ? methodMatch[1] : 'unknown';
+    return `Backend configuration error: The deployed canister is missing the '${methodName}' method. ` +
+      'The frontend and backend are out of sync. Please redeploy the application or contact support.';
+  }
+
+  // Check for reject code 5 errors
+  if (message.includes('Reject code: 5')) {
+    return 'Backend configuration error: The canister rejected the request. ' +
+      'This usually means the frontend and backend are out of sync. Please redeploy the application.';
+  }
+
+  // Check for authentication/authorization errors
+  if (message.includes('Unauthorized') || message.includes('Authentication required')) {
+    return message;
+  }
+
+  // Check for trap errors
+  if (message.includes('Canister trapped:') || message.includes('trapped explicitly:')) {
+    const trapMatch = message.match(/trapped(?:\s+explicitly)?:\s*(.+?)(?:\n|$)/i);
+    if (trapMatch && trapMatch[1]) {
+      return trapMatch[1].trim();
     }
-    return 'You are not authorized to perform this action';
   }
 
-  // Check for authentication-related errors
-  if (message.toLowerCase().includes('not authenticated') || 
-      message.toLowerCase().includes('anonymous') ||
-      message.toLowerCase().includes('sign in') ||
-      message.toLowerCase().includes('login')) {
-    return 'Please sign in to continue';
-  }
-
-  // Check for "trap" messages and extract the actual error
-  if (message.includes('trap')) {
-    const match = message.match(/trap: (.+?)(?:\n|$)/);
-    if (match) {
-      return match[1];
+  // Check for other common error patterns
+  if (message.includes('Call was rejected:')) {
+    const rejectMatch = message.match(/Call was rejected:\s*(.+?)(?:\n|$)/i);
+    if (rejectMatch && rejectMatch[1]) {
+      return rejectMatch[1].trim();
     }
   }
 
@@ -59,13 +68,23 @@ function extractErrorMessage(message: string): string {
 }
 
 /**
- * Checks if an error indicates the user needs to authenticate
+ * Checks if an error is related to authentication
  */
 export function isAuthenticationError(error: unknown): boolean {
   const message = normalizeError(error).toLowerCase();
   return message.includes('unauthorized') || 
-         message.includes('not authenticated') || 
-         message.includes('sign in') ||
-         message.includes('login') ||
-         message.includes('only users can');
+         message.includes('authentication') || 
+         message.includes('not authenticated') ||
+         message.includes('please log in');
+}
+
+/**
+ * Checks if an error is related to backend configuration/deployment mismatch
+ */
+export function isBackendConfigError(error: unknown): boolean {
+  const message = normalizeError(error).toLowerCase();
+  return message.includes('backend configuration error') ||
+         message.includes('has no update method') ||
+         message.includes('reject code: 5') ||
+         message.includes('out of sync');
 }

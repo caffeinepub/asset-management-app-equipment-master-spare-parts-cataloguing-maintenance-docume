@@ -1,6 +1,6 @@
 import { ReactNode } from 'react';
-import { SiCoffeescript } from 'react-icons/si';
 import { Heart } from 'lucide-react';
+import HeaderAuthControl from './HeaderAuthControl';
 
 interface PageLayoutProps {
   children: ReactNode;
@@ -11,10 +11,13 @@ export default function PageLayout({ children }: PageLayoutProps) {
     <div className="min-h-screen flex flex-col bg-background">
       <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Asset Management System</h1>
-              <p className="text-sm text-muted-foreground">Equipment, Maintenance & Documentation</p>
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Asset Management System</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">Equipment, Maintenance & Documentation</p>
+            </div>
+            <div className="flex-shrink-0">
+              <HeaderAuthControl />
             </div>
           </div>
         </div>

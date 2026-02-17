@@ -104,141 +104,24 @@ export interface _SERVICE {
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'createCataloguingRecord' : ActorMethod<
-    [bigint, string, string, Array<[string, string]>, boolean, string],
-    [] | [bigint]
-  >,
-  'createEquipment' : ActorMethod<
-    [
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      Time,
-      Time,
-      string,
-      EngineeringDiscipline,
-    ],
-    bigint
-  >,
-  'createMaintenanceRecord' : ActorMethod<
-    [
-      bigint,
-      string,
-      { 'scheduled' : null } |
-        { 'completed' : null } |
-        { 'overdue' : null },
-      Time,
-      Time,
-      string,
-    ],
-    [] | [bigint]
-  >,
-  'createSparePart' : ActorMethod<
-    [
-      bigint,
-      string,
-      string,
-      bigint,
-      string,
-      string,
-      string,
-      string,
-      [] | [ExternalBlob],
-      string,
-    ],
-    [] | [bigint]
-  >,
-  'deleteCataloguingRecord' : ActorMethod<[bigint, bigint], boolean>,
   'deleteDocument' : ActorMethod<[bigint, bigint], boolean>,
   'deleteEquipment' : ActorMethod<[bigint], boolean>,
-  'deleteMaintenanceRecord' : ActorMethod<[bigint, bigint], boolean>,
   'deleteSparePart' : ActorMethod<[bigint, bigint], boolean>,
-  'findSparePartsByEquipmentTagNumber' : ActorMethod<
-    [string],
-    Array<SparePart>
-  >,
-  'findSparePartsByManufacturer' : ActorMethod<[string], Array<SparePart>>,
-  'findSparePartsByModelSerial' : ActorMethod<[string], Array<SparePart>>,
-  'findSparePartsByPartNo' : ActorMethod<[string], Array<SparePart>>,
   'getAllEquipment' : ActorMethod<[], Array<Equipment>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCataloguingRecordsByEquipment' : ActorMethod<
-    [bigint],
-    Array<CataloguingRecord>
-  >,
-  'getDocumentsByEquipment' : ActorMethod<[bigint], Array<Document>>,
+  'getCataloguingRecords' : ActorMethod<[bigint], Array<CataloguingRecord>>,
+  'getDocuments' : ActorMethod<[bigint], Array<Document>>,
   'getEquipment' : ActorMethod<[bigint], [] | [Equipment]>,
-  'getEquipmentList' : ActorMethod<[], Array<Equipment>>,
-  'getMaintenanceByEquipment' : ActorMethod<[bigint], Array<MaintenanceRecord>>,
-  'getMaintenanceDueReport' : ActorMethod<[], Array<MaintenanceRecord>>,
-  'getNextEquipmentNumber' : ActorMethod<[], bigint>,
-  'getSparePartsByEquipment' : ActorMethod<[bigint], Array<SparePart>>,
-  'getSparePartsReport' : ActorMethod<[], Array<SparePart>>,
+  'getMaintenanceRecords' : ActorMethod<[bigint], Array<MaintenanceRecord>>,
+  'getSpareParts' : ActorMethod<[bigint], Array<SparePart>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
-  'updateCataloguingRecord' : ActorMethod<
-    [bigint, bigint, string, string, Array<[string, string]>, boolean, string],
-    boolean
-  >,
-  'updateDocumentMetadata' : ActorMethod<
-    [bigint, bigint, string, string],
-    boolean
-  >,
-  'updateEquipment' : ActorMethod<
-    [
-      bigint,
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      Time,
-      Time,
-      string,
-      EngineeringDiscipline,
-    ],
-    boolean
-  >,
-  'updateMaintenanceRecord' : ActorMethod<
-    [
-      bigint,
-      bigint,
-      string,
-      { 'scheduled' : null } |
-        { 'completed' : null } |
-        { 'overdue' : null },
-      Time,
-      Time,
-      string,
-    ],
-    boolean
-  >,
-  'updateSparePart' : ActorMethod<
-    [
-      bigint,
-      bigint,
-      string,
-      string,
-      bigint,
-      string,
-      string,
-      string,
-      string,
-      [] | [ExternalBlob],
-      string,
-    ],
-    boolean
-  >,
-  'uploadDocument' : ActorMethod<
-    [bigint, string, ExternalBlob, string],
-    [] | [bigint]
-  >,
+  'updateCataloguingRecord' : ActorMethod<[CataloguingRecord], boolean>,
+  'updateEquipment' : ActorMethod<[Equipment], boolean>,
+  'updateMaintenanceRecord' : ActorMethod<[MaintenanceRecord], boolean>,
+  'updateSparePart' : ActorMethod<[SparePart], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

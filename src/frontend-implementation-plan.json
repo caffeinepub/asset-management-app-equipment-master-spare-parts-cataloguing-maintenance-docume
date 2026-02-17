@@ -1,59 +1,21 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Automatic equipment number preview and enhanced equipment search UX",
+  "title": "Maintenance Hub — Draft rebuild trigger (no functional changes)",
   "requirements": [
     {
-      "id": "REQ-2",
-      "summary": "Show an auto-generated, read-only next equipment number on the create equipment form and refresh it after successful creation.",
+      "id": "REQ-1",
+      "summary": "Trigger a fresh draft deployment rebuild from the current repo state without changing application functionality or UI behavior.",
       "acceptanceCriteria": [
-        "The create-equipment form shows an \"Equipment # (auto-generated)\" field that is read-only/disabled.",
-        "The displayed value is fetched from the backend and updates appropriately after a successful create (so the next number increments).",
-        "After creating equipment, the success toast/message includes the created equipment number returned by the backend."
+        "A new draft build is generated from the current repository state.",
+        "The draft environment is accessible via a fresh draft URL and is not marked as expired at time of delivery.",
+        "No application functionality changes are introduced as part of this draft rebuild."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a React Query hook (e.g., useGetNextEquipmentNumber) that calls the backend capability to fetch the next equipment number, and ensure it can be invalidated/refetched after create."
-        },
-        {
-          "path": "frontend/src/pages/EquipmentMasterPage.tsx",
-          "operation": "modify",
-          "description": "Fetch and display the next equipment number in a disabled/read-only field labeled \"Equipment # (auto-generated)\"; refresh the displayed number after a successful create by invalidating/refetching the next-number query; keep success toast showing the created equipment number returned from create."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Add client-side text search and discipline filtering on the Equipment List page across key equipment fields with a distinct empty state for no matches.",
-      "acceptanceCriteria": [
-        "Equipment List page includes a search input that filters the table results without requiring a page reload.",
-        "Search can match at least: equipment number, equipment tag number, name, location, manufacturer, model, and serial number.",
-        "A discipline filter is available (e.g., dropdown) and can be combined with the text search.",
-        "When no records match the search/filter criteria, the page shows a clear empty state (English text) distinct from the initial \"no equipment records\" state."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/EquipmentListPage.tsx",
-          "operation": "modify",
-          "description": "Add a search input and a discipline dropdown filter; implement in-memory filtering of the already-fetched equipment list (no reload) matching equipment #, tag number, name, location, manufacturer, model, and serial number; render a distinct empty state message when equipment exists but no rows match current search/filter criteria."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Enhance EquipmentLookup dropdown with a type-to-filter input over equipment options while preserving the current selection.",
-      "acceptanceCriteria": [
-        "EquipmentLookup UI provides a way to type to filter the equipment options (by equipment number, tag number, and name).",
-        "Filtering does not change the selected equipment value unless the user explicitly selects a different option.",
-        "When the filter yields no matches, the UI indicates that no equipment matched the filter (English text)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/EquipmentLookup.tsx",
-          "operation": "modify",
-          "description": "Add a local filter input above the select and filter options by equipment number, equipment tag number, and name; ensure changing the filter does not modify the selected value; show an English \"No equipment matched the filter\" style message when the filtered options list is empty."
+          "path": "frontend/DRAFT_REBUILD_TRIGGER.md",
+          "operation": "create",
+          "description": "Add a non-runtime, non-imported rebuild trigger document (e.g., with a short note and current timestamp) to force a new draft build/publish while keeping all app behavior unchanged."
         }
       ]
     }

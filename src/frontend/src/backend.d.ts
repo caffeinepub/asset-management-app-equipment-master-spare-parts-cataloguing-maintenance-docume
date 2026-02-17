@@ -93,38 +93,22 @@ export enum Variant_submitted_draft {
 }
 export interface backendInterface {
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
-    createCataloguingRecord(equipmentNumber: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<bigint | null>;
-    createEquipment(name: string, equipmentTagNumber: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<bigint>;
-    createMaintenanceRecord(equipmentNumber: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<bigint | null>;
-    createSparePart(equipmentNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<bigint | null>;
-    deleteCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint): Promise<boolean>;
     deleteDocument(equipmentNumber: bigint, docId: bigint): Promise<boolean>;
     deleteEquipment(equipmentNumber: bigint): Promise<boolean>;
-    deleteMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint): Promise<boolean>;
     deleteSparePart(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
-    findSparePartsByEquipmentTagNumber(_equipmentTagNumber: string): Promise<Array<SparePart>>;
-    findSparePartsByManufacturer(manufacturer: string): Promise<Array<SparePart>>;
-    findSparePartsByModelSerial(modelSerial: string): Promise<Array<SparePart>>;
-    findSparePartsByPartNo(partNo: string): Promise<Array<SparePart>>;
     getAllEquipment(): Promise<Array<Equipment>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getCataloguingRecordsByEquipment(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
-    getDocumentsByEquipment(equipmentNumber: bigint): Promise<Array<Document>>;
+    getCataloguingRecords(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
+    getDocuments(equipmentNumber: bigint): Promise<Array<Document>>;
     getEquipment(equipmentNumber: bigint): Promise<Equipment | null>;
-    getEquipmentList(): Promise<Array<Equipment>>;
-    getMaintenanceByEquipment(equipmentNumber: bigint): Promise<Array<MaintenanceRecord>>;
-    getMaintenanceDueReport(): Promise<Array<MaintenanceRecord>>;
-    getNextEquipmentNumber(): Promise<bigint>;
-    getSparePartsByEquipment(equipmentNumber: bigint): Promise<Array<SparePart>>;
-    getSparePartsReport(): Promise<Array<SparePart>>;
+    getMaintenanceRecords(equipmentNumber: bigint): Promise<Array<MaintenanceRecord>>;
+    getSpareParts(equipmentNumber: bigint): Promise<Array<SparePart>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
-    updateCataloguingRecord(equipmentNumber: bigint, recordIndex: bigint, materialDesc: string, templateName: string, attributes: Array<[string, string]>, isDraft: boolean, additionalInfo: string): Promise<boolean>;
-    updateDocumentMetadata(equipmentNumber: bigint, docId: bigint, newDocType: string, additionalInfo: string): Promise<boolean>;
-    updateEquipment(equipmentNumber: bigint, name: string, equipmentTagNumber: string, location: string, manufacturer: string, model: string, serial: string, purchase: Time, warranty: Time, additionalInfo: string, discipline: EngineeringDiscipline): Promise<boolean>;
-    updateMaintenanceRecord(equipmentNumber: bigint, maintenanceId: bigint, maintType: string, status: Variant_scheduled_completed_overdue, lastDate: Time, nextDate: Time, additionalInfo: string): Promise<boolean>;
-    updateSparePart(equipmentNumber: bigint, partNumber: bigint, name: string, description: string, quantity: bigint, supplier: string, manufacturer: string, partNo: string, modelSerial: string, attachment: ExternalBlob | null, additionalInfo: string): Promise<boolean>;
-    uploadDocument(equipmentNumber: bigint, docType: string, file: ExternalBlob, additionalInfo: string): Promise<bigint | null>;
+    updateCataloguingRecord(record: CataloguingRecord): Promise<boolean>;
+    updateEquipment(equipment: Equipment): Promise<boolean>;
+    updateMaintenanceRecord(record: MaintenanceRecord): Promise<boolean>;
+    updateSparePart(part: SparePart): Promise<boolean>;
 }

@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import FormField from '@/components/forms/FormField';
 import EquipmentLookup from '@/components/EquipmentLookup';
+import SparePartNameDropdown from '@/components/SparePartNameDropdown';
 import {
   useCreateSparePart,
   useGetSparePartsByEquipment,
@@ -305,12 +306,11 @@ export default function SparePartsPage() {
                 </FormField>
 
                 <FormField label="Part Name" required>
-                  <input
-                    type="text"
+                  <SparePartNameDropdown
                     value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Enter part name"
+                    onChange={(value) => handleChange('name', value)}
+                    equipmentNumber={selectedEquipment}
+                    placeholder="Select or type part name"
                   />
                 </FormField>
 
@@ -459,7 +459,7 @@ export default function SparePartsPage() {
                         <TableHead>Quantity</TableHead>
                         <TableHead>Supplier</TableHead>
                         <TableHead>Manufacturer</TableHead>
-                        <TableHead>Part No</TableHead>
+                        <TableHead>Part Number</TableHead>
                         <TableHead>Model/Serial</TableHead>
                         <TableHead>Attachment</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
@@ -470,20 +470,20 @@ export default function SparePartsPage() {
                         <TableRow key={part.partNumber.toString()}>
                           <TableCell className="font-medium">{part.partNumber.toString()}</TableCell>
                           <TableCell>{part.name}</TableCell>
-                          <TableCell>{part.description}</TableCell>
+                          <TableCell>{part.description || '-'}</TableCell>
                           <TableCell>{part.quantity.toString()}</TableCell>
-                          <TableCell>{part.supplier}</TableCell>
-                          <TableCell>{part.manufacturer}</TableCell>
-                          <TableCell>{part.partNo}</TableCell>
-                          <TableCell>{part.modelSerial}</TableCell>
+                          <TableCell>{part.supplier || '-'}</TableCell>
+                          <TableCell>{part.manufacturer || '-'}</TableCell>
+                          <TableCell>{part.partNo || '-'}</TableCell>
+                          <TableCell>{part.modelSerial || '-'}</TableCell>
                           <TableCell>
                             {part.attachment ? (
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                variant="outline"
                                 onClick={() => handleDownload(part.attachment!, part.name)}
                               >
-                                <Download className="h-3 w-3" />
+                                <Download className="h-4 w-4" />
                               </Button>
                             ) : (
                               '-'
@@ -491,11 +491,11 @@ export default function SparePartsPage() {
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleEdit(part)}>
-                                <Pencil className="h-3 w-3" />
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(part)}>
+                                <Pencil className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleDelete(part)}>
-                                <Trash2 className="h-3 w-3" />
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(part)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
                               </Button>
                             </div>
                           </TableCell>
@@ -505,11 +505,13 @@ export default function SparePartsPage() {
                   </Table>
                 </div>
               ) : viewEquipment ? (
-                <p className="text-center py-8 text-muted-foreground">
-                  No spare parts found for this equipment.
-                </p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No spare parts found for this equipment.</p>
+                </div>
               ) : (
-                <p className="text-center py-8 text-muted-foreground">Select an equipment to view spare parts.</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Select an equipment to view its spare parts.</p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -521,7 +523,7 @@ export default function SparePartsPage() {
               <CardTitle>Search Spare Parts</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField label="Equipment Tag Number">
                   <input
                     type="text"
@@ -579,9 +581,10 @@ export default function SparePartsPage() {
                         <TableHead>Quantity</TableHead>
                         <TableHead>Supplier</TableHead>
                         <TableHead>Manufacturer</TableHead>
-                        <TableHead>Part No</TableHead>
+                        <TableHead>Part Number</TableHead>
                         <TableHead>Model/Serial</TableHead>
                         <TableHead>Attachment</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -590,36 +593,45 @@ export default function SparePartsPage() {
                           <TableCell className="font-medium">{part.equipmentNumber.toString()}</TableCell>
                           <TableCell>{part.partNumber.toString()}</TableCell>
                           <TableCell>{part.name}</TableCell>
-                          <TableCell>{part.description}</TableCell>
+                          <TableCell>{part.description || '-'}</TableCell>
                           <TableCell>{part.quantity.toString()}</TableCell>
-                          <TableCell>{part.supplier}</TableCell>
-                          <TableCell>{part.manufacturer}</TableCell>
-                          <TableCell>{part.partNo}</TableCell>
-                          <TableCell>{part.modelSerial}</TableCell>
+                          <TableCell>{part.supplier || '-'}</TableCell>
+                          <TableCell>{part.manufacturer || '-'}</TableCell>
+                          <TableCell>{part.partNo || '-'}</TableCell>
+                          <TableCell>{part.modelSerial || '-'}</TableCell>
                           <TableCell>
                             {part.attachment ? (
                               <Button
+                                variant="ghost"
                                 size="sm"
-                                variant="outline"
                                 onClick={() => handleDownload(part.attachment!, part.name)}
                               >
-                                <Download className="h-3 w-3" />
+                                <Download className="h-4 w-4" />
                               </Button>
                             ) : (
                               '-'
                             )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(part)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(part)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </div>
-              ) : Object.values(searchCriteria).some((v) => v.trim()) ? (
-                <p className="text-center py-8 text-muted-foreground">No spare parts found matching your search.</p>
               ) : (
-                <p className="text-center py-8 text-muted-foreground">
-                  Enter search criteria to find spare parts.
-                </p>
+                <div className="text-center py-8 text-muted-foreground">
+                  <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p>Enter search criteria to find spare parts.</p>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -631,15 +643,15 @@ export default function SparePartsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Spare Part</DialogTitle>
-            <DialogDescription>Update spare part details below</DialogDescription>
+            <DialogDescription>Update spare part information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <FormField label="Part Name" required>
-              <input
-                type="text"
+              <SparePartNameDropdown
                 value={editFormData.name}
-                onChange={(e) => handleEditChange('name', e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                onChange={(value) => handleEditChange('name', value)}
+                equipmentNumber={selectedPart?.equipmentNumber || null}
+                placeholder="Select or type part name"
               />
             </FormField>
 
@@ -648,6 +660,7 @@ export default function SparePartsPage() {
                 value={editFormData.description}
                 onChange={(e) => handleEditChange('description', e.target.value)}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter description"
               />
             </FormField>
 
@@ -657,6 +670,7 @@ export default function SparePartsPage() {
                 value={editFormData.quantity}
                 onChange={(e) => handleEditChange('quantity', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter quantity"
                 min="0"
               />
             </FormField>
@@ -667,6 +681,7 @@ export default function SparePartsPage() {
                 value={editFormData.supplier}
                 onChange={(e) => handleEditChange('supplier', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter supplier"
               />
             </FormField>
 
@@ -676,6 +691,7 @@ export default function SparePartsPage() {
                 value={editFormData.manufacturer}
                 onChange={(e) => handleEditChange('manufacturer', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter manufacturer"
               />
             </FormField>
 
@@ -685,6 +701,7 @@ export default function SparePartsPage() {
                 value={editFormData.partNo}
                 onChange={(e) => handleEditChange('partNo', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter part number"
               />
             </FormField>
 
@@ -694,6 +711,7 @@ export default function SparePartsPage() {
                 value={editFormData.modelSerial}
                 onChange={(e) => handleEditChange('modelSerial', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                placeholder="Enter model/serial"
               />
             </FormField>
 
@@ -728,9 +746,7 @@ export default function SparePartsPage() {
               ) : (
                 <div className="flex items-center gap-2 p-3 border rounded-md">
                   <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      {editAttachmentName || 'Existing attachment'}
-                    </p>
+                    <p className="text-sm font-medium">{editAttachmentName || 'Existing attachment'}</p>
                     {editUploadProgress > 0 && editUploadProgress < 100 && (
                       <div className="mt-2">
                         <div className="h-2 bg-muted rounded-full overflow-hidden">
@@ -766,9 +782,9 @@ export default function SparePartsPage() {
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
-        title="Delete Spare Part"
-        description="Are you sure you want to delete this spare part? This action cannot be undone."
         onConfirm={confirmDelete}
+        title="Delete Spare Part"
+        description={`Are you sure you want to delete spare part "${selectedPart?.name}"? This action cannot be undone.`}
         confirmText="Delete"
         isDestructive
       />

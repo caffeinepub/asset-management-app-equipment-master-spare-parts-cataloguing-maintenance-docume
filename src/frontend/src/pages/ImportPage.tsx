@@ -12,6 +12,8 @@ import { Upload, Download, FileText, AlertCircle, CheckCircle, XCircle, Loader2 
 import { parseCSV, validateEquipmentRow, validateSparePartRow } from '@/lib/csvImport';
 import { mapEquipmentRow, mapSparePartRow, EQUIPMENT_TEMPLATE_HEADERS, SPARE_PARTS_TEMPLATE_HEADERS } from '@/lib/importMappings';
 import { downloadCSVTemplate } from '@/lib/exports';
+import { normalizeError, isBackendConfigError } from '@/lib/errors';
+import type { Equipment } from '@/backend';
 
 type ImportType = 'equipment' | 'spareParts';
 
@@ -55,6 +57,30 @@ export default function ImportPage() {
     setPreviewData(parsed.slice(0, 5)); // Show first 5 rows
   };
 
+  const findEquipmentNumber = (row: Record<string, string>, equipment: Equipment[]): bigint | null => {
+    const equipmentNumberStr = row.equipmentNumber || row.EquipmentNumber || '';
+    const equipmentTagNumber = row.equipmentTagNumber || row.EquipmentTagNumber || '';
+
+    // Try to find by equipment number first
+    if (equipmentNumberStr) {
+      try {
+        const eqNum = BigInt(parseInt(equipmentNumberStr, 10));
+        const found = equipment.find((eq) => eq.equipmentNumber === eqNum);
+        if (found) return eqNum;
+      } catch {
+        // Invalid number, continue
+      }
+    }
+
+    // Try to find by equipment tag number
+    if (equipmentTagNumber) {
+      const found = equipment.find((eq) => eq.equipmentTagNumber === equipmentTagNumber);
+      if (found) return found.equipmentNumber;
+    }
+
+    return null;
+  };
+
   const handleImport = async () => {
     if (!file || !isAuthenticated) {
       toast.error('Please sign in and select a file');
@@ -88,7 +114,7 @@ export default function ImportPage() {
 
           if (!validation.valid) {
             result.failed++;
-            result.errors.push({ row: i + 2, error: validation.error || 'Validation failed' });
+            result.errors.push({ row: i + 2, error: validation.error || 'Invalid row' });
             continue;
           }
 
@@ -96,82 +122,66 @@ export default function ImportPage() {
             const equipmentData = mapEquipmentRow(row);
             await createEquipment.mutateAsync(equipmentData);
             result.success++;
-          } catch (error: any) {
+          } catch (error) {
             result.failed++;
-            result.errors.push({ row: i + 2, error: error.message || 'Failed to create equipment' });
+            const errorMessage = normalizeError(error);
+            result.errors.push({ row: i + 2, error: errorMessage });
+            
+            // If we hit a backend config error, stop the import immediately
+            if (isBackendConfigError(error)) {
+              toast.error('Backend configuration error detected. Import stopped.', { duration: 10000 });
+              console.error('[Import] Backend configuration error:', error);
+              break;
+            }
           }
         }
-
-        // Refresh equipment queries
-        queryClient.invalidateQueries({ queryKey: ['equipment'] });
-        queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
       } else {
         // Import spare parts
-        // Build equipment lookup map
-        const equipmentByNumber = new Map<string, bigint>();
-        const equipmentByTag = new Map<string, bigint>();
-
-        allEquipment.forEach((eq) => {
-          equipmentByNumber.set(eq.equipmentNumber.toString(), eq.equipmentNumber);
-          if (eq.equipmentTagNumber) {
-            equipmentByTag.set(eq.equipmentTagNumber.toLowerCase(), eq.equipmentNumber);
-          }
-        });
-
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           const validation = validateSparePartRow(row);
 
           if (!validation.valid) {
             result.failed++;
-            result.errors.push({ row: i + 2, error: validation.error || 'Validation failed' });
-            continue;
-          }
-
-          // Resolve equipment reference
-          let equipmentNumber: bigint | null = null;
-
-          if (row.equipmentNumber) {
-            equipmentNumber = equipmentByNumber.get(row.equipmentNumber) || null;
-          } else if (row.equipmentTagNumber) {
-            equipmentNumber = equipmentByTag.get(row.equipmentTagNumber.toLowerCase()) || null;
-          }
-
-          if (!equipmentNumber) {
-            result.failed++;
-            result.errors.push({
-              row: i + 2,
-              error: `Equipment not found for ${row.equipmentNumber ? 'equipmentNumber=' + row.equipmentNumber : 'equipmentTagNumber=' + row.equipmentTagNumber}`,
-            });
+            result.errors.push({ row: i + 2, error: validation.error || 'Invalid row' });
             continue;
           }
 
           try {
+            // Find the equipment number
+            const equipmentNumber = findEquipmentNumber(row, allEquipment);
+            if (!equipmentNumber) {
+              result.failed++;
+              result.errors.push({ row: i + 2, error: 'Equipment not found' });
+              continue;
+            }
+
             const sparePartData = mapSparePartRow(row, equipmentNumber);
             await createSparePart.mutateAsync(sparePartData);
             result.success++;
-          } catch (error: any) {
+          } catch (error) {
             result.failed++;
-            result.errors.push({ row: i + 2, error: error.message || 'Failed to create spare part' });
+            const errorMessage = normalizeError(error);
+            result.errors.push({ row: i + 2, error: errorMessage });
           }
         }
-
-        // Refresh spare parts queries
-        queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
-        queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
       }
 
       setImportResult(result);
 
       if (result.success > 0) {
-        toast.success(`Successfully imported ${result.success} ${importType === 'equipment' ? 'equipment' : 'spare parts'} records`);
+        toast.success(`Successfully imported ${result.success} ${importType === 'equipment' ? 'equipment' : 'spare parts'}`);
+        queryClient.invalidateQueries({ queryKey: ['equipment'] });
+        queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
       }
 
       if (result.failed > 0) {
-        toast.error(`${result.failed} records failed to import`);
+        toast.error(`Failed to import ${result.failed} rows. See details below.`);
       }
-    } catch (error: any) {
-      toast.error(`Import failed: ${error.message}`);
+    } catch (error) {
+      const errorMessage = normalizeError(error);
+      toast.error(`Import failed: ${errorMessage}`);
+      console.error('[Import] Error:', error);
     } finally {
       setIsImporting(false);
     }
@@ -179,9 +189,9 @@ export default function ImportPage() {
 
   const handleDownloadTemplate = () => {
     if (importType === 'equipment') {
-      downloadCSVTemplate(EQUIPMENT_TEMPLATE_HEADERS, 'equipment_import_template.csv');
+      downloadCSVTemplate(EQUIPMENT_TEMPLATE_HEADERS, 'equipment_template.csv');
     } else {
-      downloadCSVTemplate(SPARE_PARTS_TEMPLATE_HEADERS, 'spare_parts_import_template.csv');
+      downloadCSVTemplate(SPARE_PARTS_TEMPLATE_HEADERS, 'spare_parts_template.csv');
     }
   };
 
@@ -194,26 +204,31 @@ export default function ImportPage() {
     }
   };
 
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Import</h1>
-        <p className="text-muted-foreground mt-1">Import equipment and spare parts from CSV files</p>
-      </div>
-
-      {!isAuthenticated && (
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Import Data</h1>
+          <p className="text-muted-foreground mt-1">Bulk import equipment and spare parts from CSV files</p>
+        </div>
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            You must be signed in to import data.{' '}
-            <button onClick={login} className="underline font-medium">
-              Sign in now
-            </button>
+            Please <button onClick={login} className="underline font-medium">log in</button> to import data.
           </AlertDescription>
         </Alert>
-      )}
+      </div>
+    );
+  }
 
-      <Tabs value={importType} onValueChange={(value) => setImportType(value as ImportType)}>
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Import Data</h1>
+        <p className="text-muted-foreground mt-1">Bulk import equipment and spare parts from CSV files</p>
+      </div>
+
+      <Tabs value={importType} onValueChange={(v) => setImportType(v as ImportType)}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="equipment">Equipment</TabsTrigger>
           <TabsTrigger value="spareParts">Spare Parts</TabsTrigger>
@@ -222,31 +237,10 @@ export default function ImportPage() {
         <TabsContent value="equipment" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Equipment Import</CardTitle>
-              <CardDescription>Import equipment records from a CSV file</CardDescription>
+              <CardTitle>Import Equipment</CardTitle>
+              <CardDescription>Upload a CSV file to import multiple equipment records at once</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert>
-                <FileText className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">Required columns:</p>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      <li>name (required)</li>
-                      <li>location (required)</li>
-                      <li>manufacturer (required)</li>
-                      <li>equipmentTagNumber (optional)</li>
-                      <li>model (optional)</li>
-                      <li>serialNumber (optional)</li>
-                      <li>purchaseDate (optional, format: YYYY-MM-DD)</li>
-                      <li>warrantyExpiry (optional, format: YYYY-MM-DD)</li>
-                      <li>discipline (optional, values: MECHANICAL, ELECTRICAL, INSTRUMENTATION, PIPING)</li>
-                      <li>additionalInformation (optional)</li>
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleDownloadTemplate}>
                   <Download className="mr-2 h-4 w-4" />
@@ -261,30 +255,36 @@ export default function ImportPage() {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
-                  disabled={!isAuthenticated}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
 
-              {file && previewData.length > 0 && (
+              {file && (
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription>
+                    Selected: {file.name} ({previewData.length > 0 ? `${previewData.length}+ rows` : 'parsing...'})
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {previewData.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Preview (first 5 rows)</p>
+                  <h3 className="text-sm font-medium">Preview (first 5 rows)</h3>
                   <div className="border rounded-md overflow-auto max-h-64">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           {Object.keys(previewData[0]).map((key) => (
-                            <TableHead key={key}>{key}</TableHead>
+                            <TableHead key={key} className="whitespace-nowrap">{key}</TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {previewData.map((row, idx) => (
                           <TableRow key={idx}>
-                            {Object.values(row).map((value, cellIdx) => (
-                              <TableCell key={cellIdx} className="text-xs">
-                                {value}
-                              </TableCell>
+                            {Object.values(row).map((val, i) => (
+                              <TableCell key={i} className="whitespace-nowrap">{val}</TableCell>
                             ))}
                           </TableRow>
                         ))}
@@ -295,18 +295,9 @@ export default function ImportPage() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleImport} disabled={!file || !isAuthenticated || isImporting}>
-                  {isImporting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Importing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import Equipment
-                    </>
-                  )}
+                <Button onClick={handleImport} disabled={!file || isImporting} className="flex-1">
+                  {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isImporting ? 'Importing...' : 'Import Equipment'}
                 </Button>
                 {file && (
                   <Button variant="outline" onClick={handleReset} disabled={isImporting}>
@@ -321,30 +312,10 @@ export default function ImportPage() {
         <TabsContent value="spareParts" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Spare Parts Import</CardTitle>
-              <CardDescription>Import spare parts records from a CSV file</CardDescription>
+              <CardTitle>Import Spare Parts</CardTitle>
+              <CardDescription>Upload a CSV file to import multiple spare parts records at once</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert>
-                <FileText className="h-4 w-4" />
-                <AlertDescription>
-                  <div className="space-y-2">
-                    <p className="font-medium">Required columns:</p>
-                    <ul className="list-disc list-inside text-sm space-y-1">
-                      <li>equipmentNumber OR equipmentTagNumber (required, to link to equipment)</li>
-                      <li>name (required)</li>
-                      <li>description (optional)</li>
-                      <li>quantity (optional, default: 0)</li>
-                      <li>supplier (optional)</li>
-                      <li>manufacturer (optional)</li>
-                      <li>partNo (optional)</li>
-                      <li>modelSerial (optional)</li>
-                      <li>additionalInformation (optional)</li>
-                    </ul>
-                  </div>
-                </AlertDescription>
-              </Alert>
-
               <div className="flex gap-2">
                 <Button variant="outline" onClick={handleDownloadTemplate}>
                   <Download className="mr-2 h-4 w-4" />
@@ -359,30 +330,36 @@ export default function ImportPage() {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
-                  disabled={!isAuthenticated}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
 
-              {file && previewData.length > 0 && (
+              {file && (
+                <Alert>
+                  <FileText className="h-4 w-4" />
+                  <AlertDescription>
+                    Selected: {file.name} ({previewData.length > 0 ? `${previewData.length}+ rows` : 'parsing...'})
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {previewData.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-sm font-medium">Preview (first 5 rows)</p>
+                  <h3 className="text-sm font-medium">Preview (first 5 rows)</h3>
                   <div className="border rounded-md overflow-auto max-h-64">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           {Object.keys(previewData[0]).map((key) => (
-                            <TableHead key={key}>{key}</TableHead>
+                            <TableHead key={key} className="whitespace-nowrap">{key}</TableHead>
                           ))}
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {previewData.map((row, idx) => (
                           <TableRow key={idx}>
-                            {Object.values(row).map((value, cellIdx) => (
-                              <TableCell key={cellIdx} className="text-xs">
-                                {value}
-                              </TableCell>
+                            {Object.values(row).map((val, i) => (
+                              <TableCell key={i} className="whitespace-nowrap">{val}</TableCell>
                             ))}
                           </TableRow>
                         ))}
@@ -393,18 +370,9 @@ export default function ImportPage() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleImport} disabled={!file || !isAuthenticated || isImporting}>
-                  {isImporting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Importing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Import Spare Parts
-                    </>
-                  )}
+                <Button onClick={handleImport} disabled={!file || isImporting} className="flex-1">
+                  {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isImporting ? 'Importing...' : 'Import Spare Parts'}
                 </Button>
                 {file && (
                   <Button variant="outline" onClick={handleReset} disabled={isImporting}>
@@ -423,21 +391,27 @@ export default function ImportPage() {
             <CardTitle>Import Results</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="font-medium">{importResult.success} successful</span>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center gap-2 p-4 border rounded-md bg-green-50 dark:bg-green-950">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <div className="text-sm font-medium">Success</div>
+                  <div className="text-2xl font-bold">{importResult.success}</div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <XCircle className="h-5 w-5 text-red-600" />
-                <span className="font-medium">{importResult.failed} failed</span>
+              <div className="flex items-center gap-2 p-4 border rounded-md bg-red-50 dark:bg-red-950">
+                <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <div>
+                  <div className="text-sm font-medium">Failed</div>
+                  <div className="text-2xl font-bold">{importResult.failed}</div>
+                </div>
               </div>
             </div>
 
             {importResult.errors.length > 0 && (
               <div className="space-y-2">
-                <p className="text-sm font-medium">Errors:</p>
-                <div className="border rounded-md max-h-64 overflow-auto">
+                <h3 className="text-sm font-medium">Errors</h3>
+                <div className="border rounded-md overflow-auto max-h-64">
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -446,10 +420,10 @@ export default function ImportPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {importResult.errors.map((error, idx) => (
+                      {importResult.errors.map((err, idx) => (
                         <TableRow key={idx}>
-                          <TableCell>{error.row}</TableCell>
-                          <TableCell className="text-xs text-red-600">{error.error}</TableCell>
+                          <TableCell>{err.row}</TableCell>
+                          <TableCell className="text-red-600 dark:text-red-400">{err.error}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

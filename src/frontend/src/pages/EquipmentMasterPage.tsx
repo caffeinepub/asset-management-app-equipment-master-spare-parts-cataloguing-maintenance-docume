@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import FormField from '@/components/forms/FormField';
+import EquipmentNameDropdown from '@/components/EquipmentNameDropdown';
 import { useCreateEquipment, useGetNextEquipmentNumber } from '@/hooks/useQueries';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
 import { toast } from 'sonner';
 import { Loader2, List, Package, FileText, Wrench, FolderOpen, BarChart3, AlertCircle, Upload } from 'lucide-react';
-import { normalizeError, isAuthenticationError } from '@/lib/errors';
+import { normalizeError, isAuthenticationError, isBackendConfigError } from '@/lib/errors';
 import { DISCIPLINE_OPTIONS } from '@/lib/disciplines';
 import { EngineeringDiscipline } from '@/backend';
 
@@ -90,7 +91,11 @@ export default function EquipmentMasterPage() {
         },
         onError: (error) => {
           const errorMessage = normalizeError(error);
-          if (isAuthenticationError(error)) {
+          
+          if (isBackendConfigError(error)) {
+            toast.error(errorMessage, { duration: 10000 });
+            console.error('[EquipmentMaster] Backend configuration error:', error);
+          } else if (isAuthenticationError(error)) {
             toast.error('Authentication required. Please log in again.');
           } else {
             toast.error(errorMessage);
@@ -142,12 +147,10 @@ export default function EquipmentMasterPage() {
                 </FormField>
 
                 <FormField label="Equipment Name" required>
-                  <input
-                    type="text"
+                  <EquipmentNameDropdown
                     value={formData.name}
-                    onChange={(e) => handleChange('name', e.target.value)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Enter equipment name"
+                    onChange={(value) => handleChange('name', value)}
+                    placeholder="Select or type equipment name"
                   />
                 </FormField>
 
