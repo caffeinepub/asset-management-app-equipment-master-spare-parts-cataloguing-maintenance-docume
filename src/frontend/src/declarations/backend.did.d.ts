@@ -63,12 +63,11 @@ export interface SparePart {
   'supplier' : string,
   'additionalInformation' : string,
   'name' : string,
-  'equipmentNumber' : bigint,
   'description' : string,
   'modelSerial' : string,
   'quantity' : bigint,
   'attachment' : [] | [ExternalBlob],
-  'partNo' : string,
+  'manufacturerPartNo' : string,
 }
 export type Time = bigint;
 export interface UserProfile { 'name' : string, 'department' : string }
@@ -103,25 +102,37 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addOrUpdateSparePart' : ActorMethod<[SparePart, bigint], boolean>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'createEquipment' : ActorMethod<[Equipment], boolean>,
+  'createSparePart' : ActorMethod<[SparePart], boolean>,
   'deleteDocument' : ActorMethod<[bigint, bigint], boolean>,
   'deleteEquipment' : ActorMethod<[bigint], boolean>,
-  'deleteSparePart' : ActorMethod<[bigint, bigint], boolean>,
+  'deleteSparePartByPartNumber' : ActorMethod<[bigint], boolean>,
+  'findEquipmentByMatching' : ActorMethod<
+    [string, boolean, boolean, boolean, boolean, boolean],
+    Array<Equipment>
+  >,
+  'findSparePartByMatching' : ActorMethod<
+    [string, boolean, boolean, boolean],
+    Array<SparePart>
+  >,
+  'getAllCataloguingRecords' : ActorMethod<[bigint], Array<CataloguingRecord>>,
+  'getAllDocuments' : ActorMethod<[bigint], Array<Document>>,
   'getAllEquipment' : ActorMethod<[], Array<Equipment>>,
+  'getAllMaintenanceRecords' : ActorMethod<[bigint], Array<MaintenanceRecord>>,
+  'getAllSpareParts' : ActorMethod<[], Array<SparePart>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getCataloguingRecords' : ActorMethod<[bigint], Array<CataloguingRecord>>,
-  'getDocuments' : ActorMethod<[bigint], Array<Document>>,
   'getEquipment' : ActorMethod<[bigint], [] | [Equipment]>,
-  'getMaintenanceRecords' : ActorMethod<[bigint], Array<MaintenanceRecord>>,
-  'getSpareParts' : ActorMethod<[bigint], Array<SparePart>>,
+  'getSparePartsForEquipment' : ActorMethod<[bigint], Array<SparePart>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'unlinkSparePartFromEquipment' : ActorMethod<[bigint, bigint], boolean>,
   'updateCataloguingRecord' : ActorMethod<[CataloguingRecord], boolean>,
   'updateEquipment' : ActorMethod<[Equipment], boolean>,
   'updateMaintenanceRecord' : ActorMethod<[MaintenanceRecord], boolean>,
-  'updateSparePart' : ActorMethod<[SparePart], boolean>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

@@ -13,7 +13,7 @@ import {
 } from '@/hooks/useQueries';
 import { exportToCSV, exportToPDF } from '@/lib/exports';
 import { formatDate } from '@/lib/dates';
-import { ArrowLeft, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { ArrowLeft, FileSpreadsheet, FileText } from 'lucide-react';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -65,7 +65,6 @@ export default function ReportsPage() {
     if (!spareParts) return;
     const data = spareParts.map((part) => ({
       'Part Number': part.partNumber.toString(),
-      'Equipment Number': part.equipmentNumber.toString(),
       Name: part.name,
       Description: part.description,
       Quantity: part.quantity.toString(),
@@ -76,10 +75,9 @@ export default function ReportsPage() {
 
   const handleExportSparePartsPDF = () => {
     if (!spareParts) return;
-    const headers = ['Part #', 'Equipment #', 'Name', 'Description', 'Quantity', 'Supplier'];
+    const headers = ['Part #', 'Name', 'Description', 'Quantity', 'Supplier'];
     const rows = spareParts.map((part) => [
       part.partNumber.toString(),
-      part.equipmentNumber.toString(),
       part.name,
       part.description,
       part.quantity.toString(),
@@ -170,7 +168,9 @@ export default function ReportsPage() {
                     <TableBody>
                       {equipmentList.map((item) => (
                         <TableRow key={item.equipmentNumber.toString()}>
-                          <TableCell className="font-medium">{item.equipmentNumber.toString()}</TableCell>
+                          <TableCell className="font-medium">
+                            EQ-{item.equipmentNumber.toString().padStart(4, '0')}
+                          </TableCell>
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.model || '-'}</TableCell>
                           <TableCell>{item.serialNumber || '-'}</TableCell>
@@ -239,7 +239,9 @@ export default function ReportsPage() {
                         <TableBody>
                           {spareParts.map((part) => (
                             <TableRow key={part.partNumber.toString()}>
-                              <TableCell className="font-medium">{part.partNumber.toString()}</TableCell>
+                              <TableCell className="font-medium">
+                                SP-{part.partNumber.toString().padStart(4, '0')}
+                              </TableCell>
                               <TableCell>{part.name}</TableCell>
                               <TableCell>{part.description}</TableCell>
                               <TableCell>{part.quantity.toString()}</TableCell>
@@ -289,7 +291,7 @@ export default function ReportsPage() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Showing maintenance records with status "overdue"
+                Showing all maintenance records
               </p>
               {maintenanceDue && maintenanceDue.length > 0 ? (
                 <div className="rounded-md border">
@@ -308,10 +310,12 @@ export default function ReportsPage() {
                       {maintenanceDue.map((record) => (
                         <TableRow key={record.maintenanceId.toString()}>
                           <TableCell className="font-medium">{record.maintenanceId.toString()}</TableCell>
-                          <TableCell>{record.equipmentNumber.toString()}</TableCell>
+                          <TableCell>EQ-{record.equipmentNumber.toString().padStart(4, '0')}</TableCell>
                           <TableCell>{record.maintenanceType}</TableCell>
                           <TableCell>
-                            <Badge variant="destructive">{record.maintenanceStatus}</Badge>
+                            <Badge variant={record.maintenanceStatus === 'overdue' ? 'destructive' : 'default'}>
+                              {record.maintenanceStatus}
+                            </Badge>
                           </TableCell>
                           <TableCell>{formatDate(record.lastMaintenanceDate)}</TableCell>
                           <TableCell>{formatDate(record.nextMaintenanceDate)}</TableCell>
@@ -322,7 +326,7 @@ export default function ReportsPage() {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
-                  No overdue maintenance records found.
+                  No maintenance records found.
                 </div>
               )}
             </CardContent>

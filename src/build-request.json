@@ -1,36 +1,51 @@
 {
   "kind": "build_request",
-  "title": "Rebuild and publish a new draft deployment",
-  "projectName": "Maintenance Hub",
-  "priority": "normal",
+  "title": "Fix equipment list undefined error in replace call",
+  "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Create and publish a new draft deployment for the current Maintenance Hub codebase so the user can access a fresh, non-expired draft environment.",
-      "target": "unknown",
+      "text": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-6",
-          "msg-5"
+          "msg-last"
         ],
         "quotes": [
-          "Make draft",
-          "⏰ Your draft app has expired. Do you want to rebuild it?"
+          "Cannot read properties of undefined (reading 'replace')     Error in equipment list"
         ]
       },
       "acceptanceCriteria": [
-        "A new draft build is generated from the current repository state.",
-        "The draft environment is accessible via a fresh draft URL and is not marked as expired at time of delivery.",
-        "No application functionality changes are introduced as part of this draft rebuild."
+        "Equipment list page loads without crashing",
+        "All string operations on equipment fields are protected with null/undefined checks",
+        "Equipment with missing or null fields display gracefully without errors"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Equipment fields are validated before string methods are called",
+        "Empty or null values are handled with fallback display values",
+        "No runtime errors occur when equipment records have incomplete data"
       ]
     }
   ],
   "constraints": [
-    "Do not change application features or UI behavior; this request is only to rebuild/publish a draft deployment."
+    "Do not modify the backend equipment data structure",
+    "Preserve existing equipment list functionality and UI layout",
+    "Maintain compatibility with existing equipment records in the database"
   ],
   "nonGoals": [
-    "Fixing dropdown visibility issues or any other UI/feature bugs unless explicitly requested separately.",
-    "Adding new features, pages, or backend schema changes."
+    "Changing the equipment data model",
+    "Adding new equipment fields",
+    "Modifying the import or creation flow"
   ],
   "imageRequirements": {
     "required": [],

@@ -27,7 +27,11 @@ export function normalizeError(error: unknown): string {
 /**
  * Extracts and cleans error messages from backend trap errors
  */
-function extractErrorMessage(message: string): string {
+function extractErrorMessage(message: string | undefined): string {
+  if (!message) {
+    return 'An unknown error occurred';
+  }
+
   // Check for missing method errors (reject code 5)
   if (message.includes('Canister has no update method') || message.includes('has no update method')) {
     const methodMatch = message.match(/method ['"](\w+)['"]/);

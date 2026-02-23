@@ -1,7 +1,43 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document } from '@/backend';
+import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document, UserProfile } from '@/backend';
 import { ExternalBlob, Variant_scheduled_completed_overdue, Variant_submitted_draft, EngineeringDiscipline } from '@/backend';
+
+// User Profile queries
+export function useGetCallerUserProfile() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  const query = useQuery<UserProfile | null>({
+    queryKey: ['currentUserProfile'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getCallerUserProfile();
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
+  });
+
+  return {
+    ...query,
+    isLoading: actorFetching || query.isLoading,
+    isFetched: !!actor && query.isFetched,
+  };
+}
+
+export function useSaveCallerUserProfile() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (profile: UserProfile) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.saveCallerUserProfile(profile);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
+    },
+  });
+}
 
 // Equipment queries
 export function useGetNextEquipmentNumber() {
@@ -11,7 +47,6 @@ export function useGetNextEquipmentNumber() {
     queryKey: ['next-equipment-number'],
     queryFn: async () => {
       if (!actor) return BigInt(1);
-      // Calculate next number from existing equipment
       const allEquipment = await actor.getAllEquipment();
       if (allEquipment.length === 0) return BigInt(1);
       const maxNumber = allEquipment.reduce((max, eq) => eq.equipmentNumber > max ? eq.equipmentNumber : max, BigInt(0));
@@ -66,12 +101,10 @@ export function useCreateEquipment() {
     }) => {
       if (!actor) throw new Error('Actor not initialized');
       
-      // Get next equipment number
       const allEquipment = await actor.getAllEquipment();
       const nextNumber = allEquipment.length === 0 ? BigInt(1) : 
         allEquipment.reduce((max, eq) => eq.equipmentNumber > max ? eq.equipmentNumber : max, BigInt(0)) + BigInt(1);
       
-      // Create equipment object matching backend Equipment type
       const equipment: Equipment = {
         equipmentNumber: nextNumber,
         equipmentTagNumber: data.equipmentTagNumber,
@@ -86,7 +119,6 @@ export function useCreateEquipment() {
         discipline: data.discipline,
       };
       
-      // Use updateEquipment to create (it will add if doesn't exist)
       const result = await actor.updateEquipment(equipment);
       return result;
     },
@@ -94,6 +126,7 @@ export function useCreateEquipment() {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
       queryClient.invalidateQueries({ queryKey: ['next-equipment-number'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
       queryClient.refetchQueries({ queryKey: ['equipment'] });
       queryClient.refetchQueries({ queryKey: ['equipment-list'] });
       queryClient.refetchQueries({ queryKey: ['next-equipment-number'] });
@@ -140,6 +173,7 @@ export function useUpdateEquipment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
     },
   });
 }
@@ -156,11 +190,66 @@ export function useDeleteEquipment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
     },
   });
 }
 
+// Global Search queries
+export function useGlobalSearchEquipment(searchTerm: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Equipment[]>({
+    queryKey: ['globalSearch', 'equipment', searchTerm],
+    queryFn: async () => {
+      if (!actor || searchTerm.length < 2) return [];
+      return actor.findEquipmentByMatching(
+        searchTerm,
+        false,
+        true,
+        true,
+        true,
+        true
+      );
+    },
+    enabled: !!actor && !isFetching && searchTerm.length >= 2,
+    staleTime: 5000,
+  });
+}
+
+export function useGlobalSearchSpareParts(searchTerm: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePart[]>({
+    queryKey: ['globalSearch', 'spareParts', searchTerm],
+    queryFn: async () => {
+      if (!actor || searchTerm.length < 2) return [];
+      return actor.findSparePartByMatching(
+        searchTerm,
+        true,
+        true,
+        true
+      );
+    },
+    enabled: !!actor && !isFetching && searchTerm.length >= 2,
+    staleTime: 5000,
+  });
+}
+
 // Spare Parts queries
+export function useGetAllSpareParts() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePart[]>({
+    queryKey: ['all-spare-parts'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllSpareParts();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetSparePartsByEquipment(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
@@ -168,9 +257,33 @@ export function useGetSparePartsByEquipment(equipmentNumber: bigint | null) {
     queryKey: ['spare-parts', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
-      return actor.getSpareParts(equipmentNumber);
+      return actor.getSparePartsForEquipment(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
+  });
+}
+
+export function useGetEquipmentUsingSparePart(partNumber: bigint | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Equipment[]>({
+    queryKey: ['equipment-using-part', partNumber?.toString()],
+    queryFn: async () => {
+      if (!actor || !partNumber) return [];
+      
+      const allEquipment = await actor.getAllEquipment();
+      const equipmentWithPart: Equipment[] = [];
+      for (const equipment of allEquipment) {
+        const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
+        const hasPart = spareParts.some((part) => part.partNumber === partNumber);
+        if (hasPart) {
+          equipmentWithPart.push(equipment);
+        }
+      }
+      
+      return equipmentWithPart;
+    },
+    enabled: !!actor && !isFetching && partNumber !== null,
   });
 }
 
@@ -193,31 +306,59 @@ export function useCreateSparePart() {
     }) => {
       if (!actor) throw new Error('Actor not initialized');
       
-      // Get next part number for this equipment
-      const existingParts = await actor.getSpareParts(data.equipmentNumber);
-      const nextPartNumber = existingParts.length === 0 ? BigInt(1) :
-        existingParts.reduce((max, p) => p.partNumber > max ? p.partNumber : max, BigInt(0)) + BigInt(1);
+      const allParts = await actor.getAllSpareParts();
+      const nextPartNumber = allParts.length === 0 ? BigInt(1) :
+        allParts.reduce((max, p) => p.partNumber > max ? p.partNumber : max, BigInt(0)) + BigInt(1);
       
       const sparePart: SparePart = {
         partNumber: nextPartNumber,
-        equipmentNumber: data.equipmentNumber,
         name: data.name,
         description: data.description,
         quantity: data.quantity,
         supplier: data.supplier,
         manufacturer: data.manufacturer,
-        partNo: data.partNo,
+        manufacturerPartNo: data.partNo,
         modelSerial: data.modelSerial,
         attachment: data.attachment || undefined,
         additionalInformation: data.additionalInfo,
       };
       
-      return actor.updateSparePart(sparePart);
+      const success = await actor.addOrUpdateSparePart(sparePart, data.equipmentNumber);
+      return success ? nextPartNumber : null;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
+    },
+  });
+}
+
+export function useLinkExistingSparePart() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      equipmentNumber: bigint;
+      partNumber: bigint;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      
+      const allParts = await actor.getAllSpareParts();
+      const existingPart = allParts.find((p) => p.partNumber === data.partNumber);
+      
+      if (!existingPart) {
+        throw new Error('Spare part not found');
+      }
+      
+      return actor.addOrUpdateSparePart(existingPart, data.equipmentNumber);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['equipment-using-part', variables.partNumber.toString()] });
     },
   });
 }
@@ -228,7 +369,6 @@ export function useUpdateSparePart() {
 
   return useMutation({
     mutationFn: async (data: {
-      equipmentNumber: bigint;
       partNumber: bigint;
       name: string;
       description: string;
@@ -242,26 +382,43 @@ export function useUpdateSparePart() {
     }) => {
       if (!actor) throw new Error('Actor not initialized');
       
+      const allEquipment = await actor.getAllEquipment();
+      let targetEquipment: bigint | null = null;
+      
+      for (const equipment of allEquipment) {
+        const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
+        const hasPart = spareParts.some((part) => part.partNumber === data.partNumber);
+        if (hasPart) {
+          targetEquipment = equipment.equipmentNumber;
+          break;
+        }
+      }
+      
+      if (!targetEquipment) {
+        return false;
+      }
+      
       const sparePart: SparePart = {
         partNumber: data.partNumber,
-        equipmentNumber: data.equipmentNumber,
         name: data.name,
         description: data.description,
         quantity: data.quantity,
         supplier: data.supplier,
         manufacturer: data.manufacturer,
-        partNo: data.partNo,
+        manufacturerPartNo: data.partNo,
         modelSerial: data.modelSerial,
         attachment: data.attachment || undefined,
         additionalInformation: data.additionalInfo,
       };
       
-      return actor.updateSparePart(sparePart);
+      return actor.addOrUpdateSparePart(sparePart, targetEquipment);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
+      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
     },
   });
 }
@@ -271,19 +428,21 @@ export function useDeleteSparePart() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { equipmentNumber: bigint; partNumber: bigint }) => {
+    mutationFn: async (partNumber: bigint) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteSparePart(data.equipmentNumber, data.partNumber);
+      return actor.deleteSparePartByPartNumber(partNumber);
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
+      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
       queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
+      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
     },
   });
 }
 
-// Spare Parts Search queries - client-side filtering
+// Spare Parts Search queries
 export function useSearchSpareParts(criteria: {
   equipmentTagNumber?: string;
   modelSerial?: string;
@@ -297,98 +456,56 @@ export function useSearchSpareParts(criteria: {
     queryFn: async () => {
       if (!actor) return [];
 
-      // Get all equipment to find matching equipment numbers
       const allEquipment = await actor.getAllEquipment();
       
-      // If searching by equipment tag number, find matching equipment
       if (criteria.equipmentTagNumber && criteria.equipmentTagNumber.trim()) {
         const matchingEquipment = allEquipment.filter(eq => 
           eq.equipmentTagNumber.toLowerCase().includes(criteria.equipmentTagNumber!.toLowerCase())
         );
         
-        // Get spare parts for all matching equipment
         const allParts = await Promise.all(
-          matchingEquipment.map(eq => actor.getSpareParts(eq.equipmentNumber))
+          matchingEquipment.map(eq => actor.getSparePartsForEquipment(eq.equipmentNumber))
         );
         return allParts.flat();
       }
 
-      // For other searches, get all spare parts from all equipment and filter client-side
-      const allParts = await Promise.all(
-        allEquipment.map(eq => actor.getSpareParts(eq.equipmentNumber))
-      );
-      const flatParts = allParts.flat();
+      const allParts = await actor.getAllSpareParts();
 
-      // Filter by model/serial
       if (criteria.modelSerial && criteria.modelSerial.trim()) {
-        return flatParts.filter(p => 
+        return allParts.filter(p => 
           p.modelSerial.toLowerCase().includes(criteria.modelSerial!.toLowerCase())
         );
       }
 
-      // Filter by part number
       if (criteria.partNo && criteria.partNo.trim()) {
-        return flatParts.filter(p => 
-          p.partNo.toLowerCase().includes(criteria.partNo!.toLowerCase())
+        return allParts.filter(p => 
+          p.manufacturerPartNo.toLowerCase().includes(criteria.partNo!.toLowerCase())
         );
       }
 
-      // Filter by manufacturer
       if (criteria.manufacturer && criteria.manufacturer.trim()) {
-        return flatParts.filter(p => 
+        return allParts.filter(p => 
           p.manufacturer.toLowerCase().includes(criteria.manufacturer!.toLowerCase())
         );
       }
 
-      return [];
+      return allParts;
     },
-    enabled: !!actor && !isFetching && Object.values(criteria).some((v) => v && v.trim()),
+    enabled: !!actor && !isFetching,
   });
 }
 
 // Cataloguing queries
-export function useGetCataloguingRecordsByEquipment(equipmentNumber: bigint | null) {
+export function useGetCataloguingRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<CataloguingRecord[]>({
     queryKey: ['cataloguing', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
-      return actor.getCataloguingRecords(equipmentNumber);
+      return actor.getAllCataloguingRecords(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
-  });
-}
-
-export function useCreateCataloguingRecord() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      materialDesc: string;
-      templateName: string;
-      attributes: [string, string][];
-      isDraft: boolean;
-      additionalInfo: string;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      const record: CataloguingRecord = {
-        equipmentNumber: data.equipmentNumber,
-        materialDescription: data.materialDesc,
-        templateName: data.templateName,
-        attributes: data.attributes,
-        status: data.isDraft ? Variant_submitted_draft.draft : Variant_submitted_draft.submitted,
-        additionalInformation: data.additionalInfo,
-      };
-      
-      return actor.updateCataloguingRecord(record);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['cataloguing', variables.equipmentNumber.toString()] });
-    },
   });
 }
 
@@ -397,26 +514,8 @@ export function useUpdateCataloguingRecord() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      recordIndex: bigint;
-      materialDesc: string;
-      templateName: string;
-      attributes: [string, string][];
-      isDraft: boolean;
-      additionalInfo: string;
-    }) => {
+    mutationFn: async (record: CataloguingRecord) => {
       if (!actor) throw new Error('Actor not initialized');
-      
-      const record: CataloguingRecord = {
-        equipmentNumber: data.equipmentNumber,
-        materialDescription: data.materialDesc,
-        templateName: data.templateName,
-        attributes: data.attributes,
-        status: data.isDraft ? Variant_submitted_draft.draft : Variant_submitted_draft.submitted,
-        additionalInformation: data.additionalInfo,
-      };
-      
       return actor.updateCataloguingRecord(record);
     },
     onSuccess: (_, variables) => {
@@ -425,73 +524,17 @@ export function useUpdateCataloguingRecord() {
   });
 }
 
-export function useDeleteCataloguingRecord() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { equipmentNumber: bigint; recordIndex: bigint }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend doesn't have delete for cataloguing, so we can't delete
-      // Return false to indicate operation not supported
-      return false;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['cataloguing', variables.equipmentNumber.toString()] });
-    },
-  });
-}
-
 // Maintenance queries
-export function useGetMaintenanceByEquipment(equipmentNumber: bigint | null) {
+export function useGetMaintenanceRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<MaintenanceRecord[]>({
     queryKey: ['maintenance', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
-      return actor.getMaintenanceRecords(equipmentNumber);
+      return actor.getAllMaintenanceRecords(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
-  });
-}
-
-export function useCreateMaintenanceRecord() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      maintType: string;
-      status: Variant_scheduled_completed_overdue;
-      lastDate: bigint;
-      nextDate: bigint;
-      additionalInfo: string;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Get next maintenance ID
-      const existingRecords = await actor.getMaintenanceRecords(data.equipmentNumber);
-      const nextId = existingRecords.length === 0 ? BigInt(1) :
-        existingRecords.reduce((max, r) => r.maintenanceId > max ? r.maintenanceId : max, BigInt(0)) + BigInt(1);
-      
-      const record: MaintenanceRecord = {
-        maintenanceId: nextId,
-        equipmentNumber: data.equipmentNumber,
-        maintenanceType: data.maintType,
-        maintenanceStatus: data.status,
-        lastMaintenanceDate: data.lastDate,
-        nextMaintenanceDate: data.nextDate,
-        additionalInformation: data.additionalInfo,
-      };
-      
-      return actor.updateMaintenanceRecord(record);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['maintenance', variables.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['maintenance-due-report'] });
-    },
   });
 }
 
@@ -500,45 +543,9 @@ export function useUpdateMaintenanceRecord() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      maintenanceId: bigint;
-      maintType: string;
-      status: Variant_scheduled_completed_overdue;
-      lastDate: bigint;
-      nextDate: bigint;
-      additionalInfo: string;
-    }) => {
+    mutationFn: async (record: MaintenanceRecord) => {
       if (!actor) throw new Error('Actor not initialized');
-      
-      const record: MaintenanceRecord = {
-        maintenanceId: data.maintenanceId,
-        equipmentNumber: data.equipmentNumber,
-        maintenanceType: data.maintType,
-        maintenanceStatus: data.status,
-        lastMaintenanceDate: data.lastDate,
-        nextMaintenanceDate: data.nextDate,
-        additionalInformation: data.additionalInfo,
-      };
-      
       return actor.updateMaintenanceRecord(record);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['maintenance', variables.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['maintenance-due-report'] });
-    },
-  });
-}
-
-export function useDeleteMaintenanceRecord() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { equipmentNumber: bigint; maintenanceId: bigint }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend doesn't have delete for maintenance records
-      return false;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance', variables.equipmentNumber.toString()] });
@@ -548,65 +555,16 @@ export function useDeleteMaintenanceRecord() {
 }
 
 // Document queries
-export function useGetDocumentsByEquipment(equipmentNumber: bigint | null) {
+export function useGetDocuments(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Document[]>({
     queryKey: ['documents', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
-      return actor.getDocuments(equipmentNumber);
+      return actor.getAllDocuments(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
-  });
-}
-
-export function useUploadDocument() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { 
-      equipmentNumber: bigint; 
-      docType: string; 
-      file: ExternalBlob;
-      additionalInfo: string;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Get next doc ID
-      const existingDocs = await actor.getDocuments(data.equipmentNumber);
-      const nextDocId = existingDocs.length === 0 ? BigInt(1) :
-        existingDocs.reduce((max, d) => d.docId > max ? d.docId : max, BigInt(0)) + BigInt(1);
-      
-      // Backend doesn't have uploadDocument, so we can't create new documents
-      // This is a limitation that should be noted
-      throw new Error('Document upload not supported by backend');
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['documents', variables.equipmentNumber.toString()] });
-    },
-  });
-}
-
-export function useUpdateDocumentMetadata() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { 
-      equipmentNumber: bigint; 
-      docId: bigint; 
-      newDocType: string;
-      additionalInfo: string;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend doesn't have updateDocumentMetadata
-      throw new Error('Document metadata update not supported by backend');
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['documents', variables.equipmentNumber.toString()] });
-    },
   });
 }
 
@@ -615,9 +573,9 @@ export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { equipmentNumber: bigint; docId: bigint }) => {
+    mutationFn: async ({ equipmentNumber, docId }: { equipmentNumber: bigint; docId: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteDocument(data.equipmentNumber, data.docId);
+      return actor.deleteDocument(equipmentNumber, docId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['documents', variables.equipmentNumber.toString()] });
@@ -625,20 +583,37 @@ export function useDeleteDocument() {
   });
 }
 
-// Reports queries
+// Report queries
+export function useGetEquipmentReport() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Equipment[]>({
+    queryKey: ['equipment-report'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllEquipment();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetSparePartsReport() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<SparePart[]>({
+  return useQuery<Array<{ equipment: Equipment; spareParts: SparePart[] }>>({
     queryKey: ['spare-parts-report'],
     queryFn: async () => {
       if (!actor) return [];
-      // Get all equipment and their spare parts
+      
       const allEquipment = await actor.getAllEquipment();
-      const allParts = await Promise.all(
-        allEquipment.map(eq => actor.getSpareParts(eq.equipmentNumber))
+      const results = await Promise.all(
+        allEquipment.map(async (equipment) => {
+          const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
+          return { equipment, spareParts };
+        })
       );
-      return allParts.flat();
+      
+      return results;
     },
     enabled: !!actor && !isFetching,
   });
@@ -651,19 +626,16 @@ export function useGetMaintenanceDueReport() {
     queryKey: ['maintenance-due-report'],
     queryFn: async () => {
       if (!actor) return [];
-      // Get all equipment and their maintenance records
-      const allEquipment = await actor.getAllEquipment();
-      const allRecords = await Promise.all(
-        allEquipment.map(eq => actor.getMaintenanceRecords(eq.equipmentNumber))
-      );
-      const flatRecords = allRecords.flat();
       
-      // Filter for overdue and scheduled maintenance
-      const now = BigInt(Date.now() * 1000000); // Convert to nanoseconds
-      return flatRecords.filter(r => 
-        r.maintenanceStatus === Variant_scheduled_completed_overdue.overdue ||
-        r.maintenanceStatus === Variant_scheduled_completed_overdue.scheduled
-      );
+      const allEquipment = await actor.getAllEquipment();
+      const allRecords: MaintenanceRecord[] = [];
+      
+      for (const equipment of allEquipment) {
+        const records = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
+        allRecords.push(...records);
+      }
+      
+      return allRecords;
     },
     enabled: !!actor && !isFetching,
   });

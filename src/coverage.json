@@ -1,42 +1,45 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-17T06:15:25.531Z",
+  "generatedAt": "2026-02-23T00:46:06.217Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Create and publish a new draft deployment for the current Maintenance Hub codebase so the user can access a fresh, non-expired draft environment.",
+        "summary": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/DRAFT_REBUILD_TRIGGER.md"
+          "frontend/src/pages/EquipmentListPage.tsx"
         ],
         "matchedFiles": [
-          "frontend/DRAFT_REBUILD_TRIGGER.md"
+          "frontend/src/pages/EquipmentListPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/EquipmentListPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/EquipmentListPage.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/DRAFT_REBUILD_TRIGGER.md",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/productionChecks.ts",
+    "frontend/src/pages/EquipmentListPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

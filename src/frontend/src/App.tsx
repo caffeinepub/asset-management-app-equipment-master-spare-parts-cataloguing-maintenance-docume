@@ -9,6 +9,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import DocumentsPage from './pages/DocumentsPage';
 import ReportsPage from './pages/ReportsPage';
 import ImportPage from './pages/ImportPage';
+import GlobalSearchPage from './pages/GlobalSearchPage';
 import PageLayout from './components/PageLayout';
 
 function RootLayout() {
@@ -71,6 +72,12 @@ const importRoute = createRoute({
   component: ImportPage,
 });
 
+const searchRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/search',
+  component: GlobalSearchPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   equipmentListRoute,
@@ -80,6 +87,7 @@ const routeTree = rootRoute.addChildren([
   documentsRoute,
   reportsRoute,
   importRoute,
+  searchRoute,
 ]);
 
 const router = createRouter({ routeTree });

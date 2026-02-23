@@ -1,14 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useActor } from '@/hooks/useActor';
 import { useCreateEquipment, useCreateSparePart, useGetAllEquipment } from '@/hooks/useQueries';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Upload, Download, FileText, AlertCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Download, FileText, AlertCircle, CheckCircle, XCircle, Loader2, RefreshCw } from 'lucide-react';
 import { parseCSV, validateEquipmentRow, validateSparePartRow } from '@/lib/csvImport';
 import { mapEquipmentRow, mapSparePartRow, EQUIPMENT_TEMPLATE_HEADERS, SPARE_PARTS_TEMPLATE_HEADERS } from '@/lib/importMappings';
 import { downloadCSVTemplate } from '@/lib/exports';
@@ -25,6 +27,8 @@ interface ImportResult {
 
 export default function ImportPage() {
   const { identity, login } = useInternetIdentity();
+  const { actor, isFetching: actorFetching } = useActor();
+  const navigate = useNavigate();
   const createEquipment = useCreateEquipment();
   const createSparePart = useCreateSparePart();
   const { data: allEquipment = [] } = useGetAllEquipment();
@@ -35,11 +39,49 @@ export default function ImportPage() {
   const [previewData, setPreviewData] = useState<Record<string, string>[]>([]);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [actorInitialized, setActorInitialized] = useState(false);
+  const [actorInitError, setActorInitError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAuthenticated = !!identity;
+  const isActorReady = !!actor && !actorFetching;
+
+  // Track actor initialization status
+  useEffect(() => {
+    if (actor && !actorFetching && !actorInitialized) {
+      setActorInitialized(true);
+      setActorInitError(false);
+      toast.success('Backend connection established');
+    }
+  }, [actor, actorFetching, actorInitialized]);
+
+  // Detect actor initialization failure
+  useEffect(() => {
+    // If we've been fetching for more than 10 seconds without success, consider it an error
+    let timeoutId: NodeJS.Timeout;
+    
+    if (actorFetching && !actor) {
+      timeoutId = setTimeout(() => {
+        if (!actor && actorFetching) {
+          setActorInitError(true);
+          toast.error('Backend connection is taking longer than expected. Please refresh the page.', {
+            duration: 10000,
+          });
+        }
+      }, 10000);
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [actorFetching, actor]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isActorReady) {
+      toast.error('Backend is still initializing. Please wait...');
+      return;
+    }
+
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
@@ -52,9 +94,14 @@ export default function ImportPage() {
     setImportResult(null);
 
     // Parse and preview
-    const text = await selectedFile.text();
-    const parsed = parseCSV(text);
-    setPreviewData(parsed.slice(0, 5)); // Show first 5 rows
+    try {
+      const text = await selectedFile.text();
+      const parsed = parseCSV(text);
+      setPreviewData(parsed.slice(0, 5)); // Show first 5 rows
+    } catch (error) {
+      toast.error('Failed to parse CSV file');
+      console.error('[Import] CSV parse error:', error);
+    }
   };
 
   const findEquipmentNumber = (row: Record<string, string>, equipment: Equipment[]): bigint | null => {
@@ -84,6 +131,16 @@ export default function ImportPage() {
   const handleImport = async () => {
     if (!file || !isAuthenticated) {
       toast.error('Please sign in and select a file');
+      return;
+    }
+
+    if (!isActorReady) {
+      toast.error('Backend connection not ready. Please wait for initialization to complete.');
+      return;
+    }
+
+    if (!actor) {
+      toast.error('Actor not initialized. Please refresh the page and try again.');
       return;
     }
 
@@ -135,6 +192,17 @@ export default function ImportPage() {
             }
           }
         }
+
+        // After equipment import completes, invalidate and navigate
+        if (result.success > 0) {
+          await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+          toast.success(`Successfully imported ${result.success} equipment. Redirecting to equipment list...`);
+          
+          // Navigate to equipment list after a brief delay to show the toast
+          setTimeout(() => {
+            navigate({ to: '/equipment-list' });
+          }, 1000);
+        }
       } else {
         // Import spare parts
         for (let i = 0; i < rows.length; i++) {
@@ -165,15 +233,15 @@ export default function ImportPage() {
             result.errors.push({ row: i + 2, error: errorMessage });
           }
         }
+
+        // Invalidate spare parts queries after import
+        if (result.success > 0) {
+          toast.success(`Successfully imported ${result.success} spare parts`);
+          queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
+        }
       }
 
       setImportResult(result);
-
-      if (result.success > 0) {
-        toast.success(`Successfully imported ${result.success} ${importType === 'equipment' ? 'equipment' : 'spare parts'}`);
-        queryClient.invalidateQueries({ queryKey: ['equipment'] });
-        queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
-      }
 
       if (result.failed > 0) {
         toast.error(`Failed to import ${result.failed} rows. See details below.`);
@@ -204,6 +272,10 @@ export default function ImportPage() {
     }
   };
 
+  const handleRetryConnection = () => {
+    window.location.reload();
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="space-y-6">
@@ -228,10 +300,33 @@ export default function ImportPage() {
         <p className="text-muted-foreground mt-1">Bulk import equipment and spare parts from CSV files</p>
       </div>
 
+      {/* Actor initialization status banner */}
+      {actorFetching && !actor && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>
+            Initializing backend connection... Please wait.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {actorInitError && !actor && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>Failed to connect to backend. Please refresh the page to retry.</span>
+            <Button variant="outline" size="sm" onClick={handleRetryConnection}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Refresh
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs value={importType} onValueChange={(v) => setImportType(v as ImportType)}>
         <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="equipment">Equipment</TabsTrigger>
-          <TabsTrigger value="spareParts">Spare Parts</TabsTrigger>
+          <TabsTrigger value="equipment" disabled={!isActorReady}>Equipment</TabsTrigger>
+          <TabsTrigger value="spareParts" disabled={!isActorReady}>Spare Parts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="equipment" className="space-y-6">
@@ -242,7 +337,7 @@ export default function ImportPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleDownloadTemplate}>
+                <Button variant="outline" onClick={handleDownloadTemplate} disabled={!isActorReady}>
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
@@ -255,6 +350,7 @@ export default function ImportPage() {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
+                  disabled={!isActorReady}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
@@ -295,7 +391,7 @@ export default function ImportPage() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleImport} disabled={!file || isImporting} className="flex-1">
+                <Button onClick={handleImport} disabled={!file || isImporting || !isActorReady} className="flex-1">
                   {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isImporting ? 'Importing...' : 'Import Equipment'}
                 </Button>
@@ -317,7 +413,7 @@ export default function ImportPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex gap-2">
-                <Button variant="outline" onClick={handleDownloadTemplate}>
+                <Button variant="outline" onClick={handleDownloadTemplate} disabled={!isActorReady}>
                   <Download className="mr-2 h-4 w-4" />
                   Download Template
                 </Button>
@@ -330,6 +426,7 @@ export default function ImportPage() {
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
+                  disabled={!isActorReady}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
@@ -370,7 +467,7 @@ export default function ImportPage() {
               )}
 
               <div className="flex gap-2">
-                <Button onClick={handleImport} disabled={!file || isImporting} className="flex-1">
+                <Button onClick={handleImport} disabled={!file || isImporting || !isActorReady} className="flex-1">
                   {isImporting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {isImporting ? 'Importing...' : 'Import Spare Parts'}
                 </Button>

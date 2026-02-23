@@ -59,12 +59,11 @@ export interface SparePart {
     supplier: string;
     additionalInformation: string;
     name: string;
-    equipmentNumber: bigint;
     description: string;
     modelSerial: string;
     quantity: bigint;
     attachment?: ExternalBlob;
-    partNo: string;
+    manufacturerPartNo: string;
 }
 export interface UserProfile {
     name: string;
@@ -92,23 +91,29 @@ export enum Variant_submitted_draft {
     draft = "draft"
 }
 export interface backendInterface {
+    addOrUpdateSparePart(part: SparePart, equipmentNumber: bigint): Promise<boolean>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    createEquipment(equipment: Equipment): Promise<boolean>;
+    createSparePart(part: SparePart): Promise<boolean>;
     deleteDocument(equipmentNumber: bigint, docId: bigint): Promise<boolean>;
     deleteEquipment(equipmentNumber: bigint): Promise<boolean>;
-    deleteSparePart(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
+    deleteSparePartByPartNumber(partNumber: bigint): Promise<boolean>;
+    findEquipmentByMatching(searchTerm: string, matchEquipmentNumber: boolean, matchEquipmentTagNumber: boolean, matchName: boolean, matchModel: boolean, matchSerialNumber: boolean): Promise<Array<Equipment>>;
+    findSparePartByMatching(searchTerm: string, matchManufacturerPartNo: boolean, matchName: boolean, matchDescription: boolean): Promise<Array<SparePart>>;
+    getAllCataloguingRecords(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
+    getAllDocuments(equipmentNumber: bigint): Promise<Array<Document>>;
     getAllEquipment(): Promise<Array<Equipment>>;
+    getAllMaintenanceRecords(equipmentNumber: bigint): Promise<Array<MaintenanceRecord>>;
+    getAllSpareParts(): Promise<Array<SparePart>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
-    getCataloguingRecords(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
-    getDocuments(equipmentNumber: bigint): Promise<Array<Document>>;
     getEquipment(equipmentNumber: bigint): Promise<Equipment | null>;
-    getMaintenanceRecords(equipmentNumber: bigint): Promise<Array<MaintenanceRecord>>;
-    getSpareParts(equipmentNumber: bigint): Promise<Array<SparePart>>;
+    getSparePartsForEquipment(equipmentNumber: bigint): Promise<Array<SparePart>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    unlinkSparePartFromEquipment(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
     updateCataloguingRecord(record: CataloguingRecord): Promise<boolean>;
     updateEquipment(equipment: Equipment): Promise<boolean>;
     updateMaintenanceRecord(record: MaintenanceRecord): Promise<boolean>;
-    updateSparePart(part: SparePart): Promise<boolean>;
 }

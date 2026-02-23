@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import FormField from '@/components/forms/FormField';
 import EquipmentLookup from '@/components/EquipmentLookup';
+import SparePartLookup from '@/components/SparePartLookup';
 import SparePartNameDropdown from '@/components/SparePartNameDropdown';
 import {
   useCreateSparePart,
@@ -21,6 +24,9 @@ import {
   useUpdateSparePart,
   useDeleteSparePart,
   useSearchSpareParts,
+  useGetAllSpareParts,
+  useGetEquipmentUsingSparePart,
+  useLinkExistingSparePart,
 } from '@/hooks/useQueries';
 import { ExternalBlob } from '@/backend';
 import { toast } from 'sonner';
@@ -34,9 +40,13 @@ export default function SparePartsPage() {
   const createSparePart = useCreateSparePart();
   const updateSparePart = useUpdateSparePart();
   const deleteSparePart = useDeleteSparePart();
+  const linkExistingSparePart = useLinkExistingSparePart();
 
   const [selectedEquipment, setSelectedEquipment] = useState<bigint | null>(null);
   const [viewEquipment, setViewEquipment] = useState<bigint | null>(null);
+  const [creationMode, setCreationMode] = useState<'new' | 'existing'>('new');
+  const [selectedExistingPart, setSelectedExistingPart] = useState<bigint | null>(null);
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -53,6 +63,7 @@ export default function SparePartsPage() {
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [viewUsedByDialogOpen, setViewUsedByDialogOpen] = useState(false);
   const [selectedPart, setSelectedPart] = useState<SparePart | null>(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -77,6 +88,8 @@ export default function SparePartsPage() {
 
   const { data: spareParts, isLoading } = useGetSparePartsByEquipment(viewEquipment);
   const { data: searchResults, isLoading: isSearching } = useSearchSpareParts(searchCriteria);
+  const { data: allSpareParts } = useGetAllSpareParts();
+  const { data: equipmentUsingPart } = useGetEquipmentUsingSparePart(selectedPart?.partNumber || null);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -102,6 +115,27 @@ export default function SparePartsPage() {
     setUploadProgress(0);
   };
 
+  const handleExistingPartSelect = (partNumber: bigint | null) => {
+    setSelectedExistingPart(partNumber);
+    if (partNumber && allSpareParts) {
+      const part = allSpareParts.find((p) => p.partNumber === partNumber);
+      if (part) {
+        setFormData({
+          name: part.name,
+          description: part.description,
+          quantity: part.quantity.toString(),
+          supplier: part.supplier,
+          manufacturer: part.manufacturer,
+          partNo: part.manufacturerPartNo,
+          modelSerial: part.modelSerial,
+          additionalInformation: part.additionalInformation || '',
+        });
+        setAttachment(part.attachment || null);
+        setAttachmentName('');
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -115,45 +149,73 @@ export default function SparePartsPage() {
       return;
     }
 
-    createSparePart.mutate(
-      {
-        equipmentNumber: selectedEquipment,
-        name: formData.name,
-        description: formData.description,
-        quantity: BigInt(formData.quantity),
-        supplier: formData.supplier,
-        manufacturer: formData.manufacturer,
-        partNo: formData.partNo,
-        modelSerial: formData.modelSerial,
-        attachment: attachment,
-        additionalInfo: formData.additionalInformation,
-      },
-      {
-        onSuccess: (partNumber) => {
-          if (partNumber) {
-            toast.success(`Spare part created successfully! Part Number: ${partNumber}`);
-            setFormData({
-              name: '',
-              description: '',
-              quantity: '',
-              supplier: '',
-              manufacturer: '',
-              partNo: '',
-              modelSerial: '',
-              additionalInformation: '',
-            });
-            setAttachment(null);
-            setAttachmentName('');
-            setUploadProgress(0);
-          } else {
-            toast.error('Equipment not found');
-          }
+    if (creationMode === 'existing' && selectedExistingPart) {
+      linkExistingSparePart.mutate(
+        {
+          equipmentNumber: selectedEquipment,
+          partNumber: selectedExistingPart,
         },
-        onError: () => {
-          toast.error('Failed to create spare part');
+        {
+          onSuccess: (success) => {
+            if (success) {
+              toast.success('Spare part linked to equipment successfully!');
+              resetForm();
+            } else {
+              toast.error('Failed to link spare part');
+            }
+          },
+          onError: () => {
+            toast.error('Failed to link spare part');
+          },
+        }
+      );
+    } else {
+      createSparePart.mutate(
+        {
+          equipmentNumber: selectedEquipment,
+          name: formData.name,
+          description: formData.description,
+          quantity: BigInt(formData.quantity),
+          supplier: formData.supplier,
+          manufacturer: formData.manufacturer,
+          partNo: formData.partNo,
+          modelSerial: formData.modelSerial,
+          attachment: attachment,
+          additionalInfo: formData.additionalInformation,
         },
-      }
-    );
+        {
+          onSuccess: (partNumber) => {
+            if (partNumber) {
+              toast.success(`Spare part created successfully! Part Number: SP-${partNumber.toString().padStart(4, '0')}`);
+              resetForm();
+            } else {
+              toast.error('Equipment not found');
+            }
+          },
+          onError: () => {
+            toast.error('Failed to create spare part');
+          },
+        }
+      );
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      description: '',
+      quantity: '',
+      supplier: '',
+      manufacturer: '',
+      partNo: '',
+      modelSerial: '',
+      additionalInformation: '',
+    });
+    setAttachment(null);
+    setAttachmentName('');
+    setUploadProgress(0);
+    setSelectedExistingPart(null);
+    setCreationMode('new');
   };
 
   const handleEdit = (part: SparePart) => {
@@ -164,7 +226,7 @@ export default function SparePartsPage() {
       quantity: part.quantity.toString(),
       supplier: part.supplier,
       manufacturer: part.manufacturer,
-      partNo: part.partNo,
+      partNo: part.manufacturerPartNo,
       modelSerial: part.modelSerial,
       additionalInformation: part.additionalInformation || '',
     });
@@ -177,6 +239,11 @@ export default function SparePartsPage() {
   const handleDelete = (part: SparePart) => {
     setSelectedPart(part);
     setDeleteDialogOpen(true);
+  };
+
+  const handleViewUsedBy = (part: SparePart) => {
+    setSelectedPart(part);
+    setViewUsedByDialogOpen(true);
   };
 
   const handleEditChange = (field: string, value: string) => {
@@ -208,7 +275,6 @@ export default function SparePartsPage() {
 
     updateSparePart.mutate(
       {
-        equipmentNumber: selectedPart.equipmentNumber,
         partNumber: selectedPart.partNumber,
         name: editFormData.name,
         description: editFormData.description,
@@ -239,25 +305,19 @@ export default function SparePartsPage() {
   const confirmDelete = () => {
     if (!selectedPart) return;
 
-    deleteSparePart.mutate(
-      {
-        equipmentNumber: selectedPart.equipmentNumber,
-        partNumber: selectedPart.partNumber,
+    deleteSparePart.mutate(selectedPart.partNumber, {
+      onSuccess: (success) => {
+        if (success) {
+          toast.success('Spare part deleted successfully');
+          setDeleteDialogOpen(false);
+        } else {
+          toast.error('Spare part not found');
+        }
       },
-      {
-        onSuccess: (success) => {
-          if (success) {
-            toast.success('Spare part deleted successfully');
-            setDeleteDialogOpen(false);
-          } else {
-            toast.error('Spare part not found');
-          }
-        },
-        onError: () => {
-          toast.error('Failed to delete spare part');
-        },
-      }
-    );
+      onError: () => {
+        toast.error('Failed to delete spare part');
+      },
+    });
   };
 
   const handleSearchChange = (field: string, value: string) => {
@@ -273,6 +333,8 @@ export default function SparePartsPage() {
     link.click();
     document.body.removeChild(link);
   };
+
+  const isFormDisabled = creationMode === 'existing' && !!selectedExistingPart;
 
   return (
     <div className="space-y-6">
@@ -305,6 +367,49 @@ export default function SparePartsPage() {
                   <EquipmentLookup value={selectedEquipment} onChange={setSelectedEquipment} />
                 </FormField>
 
+                <FormField label="Mode" required>
+                  <RadioGroup
+                    value={creationMode}
+                    onValueChange={(value) => {
+                      setCreationMode(value as 'new' | 'existing');
+                      if (value === 'new') {
+                        setSelectedExistingPart(null);
+                        setFormData({
+                          name: '',
+                          description: '',
+                          quantity: '',
+                          supplier: '',
+                          manufacturer: '',
+                          partNo: '',
+                          modelSerial: '',
+                          additionalInformation: '',
+                        });
+                        setAttachment(null);
+                        setAttachmentName('');
+                      }
+                    }}
+                    className="flex gap-4"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="new" id="mode-new" />
+                      <Label htmlFor="mode-new">Create New</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="existing" id="mode-existing" />
+                      <Label htmlFor="mode-existing">Select Existing</Label>
+                    </div>
+                  </RadioGroup>
+                </FormField>
+
+                {creationMode === 'existing' && (
+                  <FormField label="Select Existing Spare Part" required>
+                    <SparePartLookup
+                      value={selectedExistingPart}
+                      onChange={handleExistingPartSelect}
+                    />
+                  </FormField>
+                )}
+
                 <FormField label="Part Name" required>
                   <SparePartNameDropdown
                     value={formData.name}
@@ -320,6 +425,7 @@ export default function SparePartsPage() {
                     onChange={(e) => handleChange('description', e.target.value)}
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter description"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
@@ -331,6 +437,7 @@ export default function SparePartsPage() {
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter quantity"
                     min="0"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
@@ -341,6 +448,7 @@ export default function SparePartsPage() {
                     onChange={(e) => handleChange('supplier', e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter supplier"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
@@ -351,16 +459,18 @@ export default function SparePartsPage() {
                     onChange={(e) => handleChange('manufacturer', e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter manufacturer"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
-                <FormField label="Part Number">
+                <FormField label="Manufacturer Part Number">
                   <input
                     type="text"
                     value={formData.partNo}
                     onChange={(e) => handleChange('partNo', e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Enter part number"
+                    placeholder="Enter manufacturer part number"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
@@ -371,7 +481,49 @@ export default function SparePartsPage() {
                     onChange={(e) => handleChange('modelSerial', e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                     placeholder="Enter model/serial"
+                    disabled={isFormDisabled}
                   />
+                </FormField>
+
+                <FormField label="Attachment">
+                  {attachment ? (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 p-2 border rounded-md bg-muted text-sm">
+                        {attachmentName || 'Attachment uploaded'}
+                        {uploadProgress > 0 && uploadProgress < 100 && (
+                          <span className="ml-2 text-muted-foreground">({uploadProgress}%)</span>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={handleRemoveAttachment}
+                        disabled={isFormDisabled}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="file"
+                        id="attachment"
+                        onChange={handleFileSelect}
+                        className="hidden"
+                        disabled={isFormDisabled}
+                      />
+                      <label
+                        htmlFor="attachment"
+                        className={`flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                          isFormDisabled ? 'cursor-not-allowed opacity-50' : ''
+                        }`}
+                      >
+                        <Upload className="mr-2 h-4 w-4" />
+                        Upload File
+                      </label>
+                    </div>
+                  )}
                 </FormField>
 
                 <FormField label="Additional Information">
@@ -379,55 +531,20 @@ export default function SparePartsPage() {
                     value={formData.additionalInformation}
                     onChange={(e) => handleChange('additionalInformation', e.target.value)}
                     className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Enter any additional information about this spare part"
+                    placeholder="Enter any additional information"
+                    disabled={isFormDisabled}
                   />
                 </FormField>
 
-                <FormField label="Attachment">
-                  {!attachment ? (
-                    <div>
-                      <input
-                        type="file"
-                        id="file-upload"
-                        onChange={handleFileSelect}
-                        className="hidden"
-                        accept="*/*"
-                      />
-                      <label htmlFor="file-upload">
-                        <Button type="button" variant="outline" asChild>
-                          <span>
-                            <Upload className="mr-2 h-4 w-4" />
-                            Choose File
-                          </span>
-                        </Button>
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 p-3 border rounded-md">
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{attachmentName}</p>
-                        {uploadProgress < 100 && (
-                          <div className="mt-2">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-primary transition-all"
-                                style={{ width: `${uploadProgress}%` }}
-                              />
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">{uploadProgress}% uploaded</p>
-                          </div>
-                        )}
-                      </div>
-                      <Button type="button" size="sm" variant="ghost" onClick={handleRemoveAttachment}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                <Button
+                  type="submit"
+                  disabled={createSparePart.isPending || linkExistingSparePart.isPending}
+                  className="w-full"
+                >
+                  {(createSparePart.isPending || linkExistingSparePart.isPending) && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   )}
-                </FormField>
-
-                <Button type="submit" disabled={createSparePart.isPending} className="w-full">
-                  {createSparePart.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create Spare Part
+                  {creationMode === 'existing' ? 'Link Spare Part' : 'Create Spare Part'}
                 </Button>
               </form>
             </CardContent>
@@ -444,73 +561,69 @@ export default function SparePartsPage() {
                 <EquipmentLookup value={viewEquipment} onChange={setViewEquipment} />
               </FormField>
 
-              {isLoading ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : spareParts && spareParts.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Part #</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Supplier</TableHead>
-                        <TableHead>Manufacturer</TableHead>
-                        <TableHead>Part Number</TableHead>
-                        <TableHead>Model/Serial</TableHead>
-                        <TableHead>Attachment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {spareParts.map((part) => (
-                        <TableRow key={part.partNumber.toString()}>
-                          <TableCell className="font-medium">{part.partNumber.toString()}</TableCell>
-                          <TableCell>{part.name}</TableCell>
-                          <TableCell>{part.description || '-'}</TableCell>
-                          <TableCell>{part.quantity.toString()}</TableCell>
-                          <TableCell>{part.supplier || '-'}</TableCell>
-                          <TableCell>{part.manufacturer || '-'}</TableCell>
-                          <TableCell>{part.partNo || '-'}</TableCell>
-                          <TableCell>{part.modelSerial || '-'}</TableCell>
-                          <TableCell>
-                            {part.attachment ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleDownload(part.attachment!, part.name)}
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
-                            ) : (
-                              '-'
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(part)}>
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(part)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
-                          </TableCell>
+              {viewEquipment && (
+                <div className="border rounded-lg">
+                  {isLoading ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                      Loading spare parts...
+                    </div>
+                  ) : spareParts && spareParts.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Part No</TableHead>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Manufacturer Part No</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Supplier</TableHead>
+                          <TableHead>Attachment</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : viewEquipment ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No spare parts found for this equipment.</p>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Select an equipment to view its spare parts.</p>
+                      </TableHeader>
+                      <TableBody>
+                        {spareParts.map((part) => (
+                          <TableRow key={part.partNumber.toString()}>
+                            <TableCell>SP-{part.partNumber.toString().padStart(4, '0')}</TableCell>
+                            <TableCell>{part.name}</TableCell>
+                            <TableCell>{part.manufacturerPartNo}</TableCell>
+                            <TableCell>{part.quantity.toString()}</TableCell>
+                            <TableCell>{part.supplier}</TableCell>
+                            <TableCell>
+                              {part.attachment ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleDownload(part.attachment!, part.name)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              ) : (
+                                '-'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex gap-2">
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(part)}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(part)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={() => handleViewUsedBy(part)}>
+                                  Used By
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No spare parts found for this equipment
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -544,13 +657,13 @@ export default function SparePartsPage() {
                   />
                 </FormField>
 
-                <FormField label="Part Number">
+                <FormField label="Manufacturer Part Number">
                   <input
                     type="text"
                     value={searchCriteria.partNo}
                     onChange={(e) => handleSearchChange('partNo', e.target.value)}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Search by part number"
+                    placeholder="Search by manufacturer part number"
                   />
                 </FormField>
 
@@ -565,40 +678,33 @@ export default function SparePartsPage() {
                 </FormField>
               </div>
 
-              {isSearching ? (
-                <div className="flex justify-center py-8">
-                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-              ) : searchResults && searchResults.length > 0 ? (
-                <div className="overflow-x-auto">
+              <div className="border rounded-lg">
+                {isSearching ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                    Searching...
+                  </div>
+                ) : searchResults && searchResults.length > 0 ? (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Equipment #</TableHead>
-                        <TableHead>Part #</TableHead>
+                        <TableHead>Part No</TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableHead>Manufacturer Part No</TableHead>
                         <TableHead>Quantity</TableHead>
                         <TableHead>Supplier</TableHead>
-                        <TableHead>Manufacturer</TableHead>
-                        <TableHead>Part Number</TableHead>
-                        <TableHead>Model/Serial</TableHead>
                         <TableHead>Attachment</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {searchResults.map((part) => (
-                        <TableRow key={`${part.equipmentNumber}-${part.partNumber}`}>
-                          <TableCell className="font-medium">{part.equipmentNumber.toString()}</TableCell>
-                          <TableCell>{part.partNumber.toString()}</TableCell>
+                        <TableRow key={part.partNumber.toString()}>
+                          <TableCell>SP-{part.partNumber.toString().padStart(4, '0')}</TableCell>
                           <TableCell>{part.name}</TableCell>
-                          <TableCell>{part.description || '-'}</TableCell>
+                          <TableCell>{part.manufacturerPartNo}</TableCell>
                           <TableCell>{part.quantity.toString()}</TableCell>
-                          <TableCell>{part.supplier || '-'}</TableCell>
-                          <TableCell>{part.manufacturer || '-'}</TableCell>
-                          <TableCell>{part.partNo || '-'}</TableCell>
-                          <TableCell>{part.modelSerial || '-'}</TableCell>
+                          <TableCell>{part.supplier}</TableCell>
                           <TableCell>
                             {part.attachment ? (
                               <Button
@@ -612,13 +718,16 @@ export default function SparePartsPage() {
                               '-'
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
+                          <TableCell>
+                            <div className="flex gap-2">
                               <Button variant="ghost" size="sm" onClick={() => handleEdit(part)}>
                                 <Pencil className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(part)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleViewUsedBy(part)}>
+                                Used By
                               </Button>
                             </div>
                           </TableCell>
@@ -626,13 +735,13 @@ export default function SparePartsPage() {
                       ))}
                     </TableBody>
                   </Table>
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>Enter search criteria to find spare parts.</p>
-                </div>
-              )}
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <Search className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Enter search criteria to find spare parts</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -643,14 +752,16 @@ export default function SparePartsPage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Spare Part</DialogTitle>
-            <DialogDescription>Update spare part information</DialogDescription>
+            <DialogDescription>
+              Update spare part information for SP-{selectedPart?.partNumber.toString().padStart(4, '0')}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <FormField label="Part Name" required>
               <SparePartNameDropdown
                 value={editFormData.name}
                 onChange={(value) => handleEditChange('name', value)}
-                equipmentNumber={selectedPart?.equipmentNumber || null}
+                equipmentNumber={null}
                 placeholder="Select or type part name"
               />
             </FormField>
@@ -695,13 +806,13 @@ export default function SparePartsPage() {
               />
             </FormField>
 
-            <FormField label="Part Number">
+            <FormField label="Manufacturer Part Number">
               <input
                 type="text"
                 value={editFormData.partNo}
                 onChange={(e) => handleEditChange('partNo', e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Enter part number"
+                placeholder="Enter manufacturer part number"
               />
             </FormField>
 
@@ -715,55 +826,45 @@ export default function SparePartsPage() {
               />
             </FormField>
 
+            <FormField label="Attachment">
+              {editAttachment ? (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 p-2 border rounded-md bg-muted text-sm">
+                    {editAttachmentName || 'Attachment uploaded'}
+                    {editUploadProgress > 0 && editUploadProgress < 100 && (
+                      <span className="ml-2 text-muted-foreground">({editUploadProgress}%)</span>
+                    )}
+                  </div>
+                  <Button type="button" variant="outline" size="icon" onClick={handleEditRemoveAttachment}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    id="edit-attachment"
+                    onChange={handleEditFileSelect}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="edit-attachment"
+                    className="flex h-10 w-full cursor-pointer items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload File
+                  </label>
+                </div>
+              )}
+            </FormField>
+
             <FormField label="Additional Information">
               <textarea
                 value={editFormData.additionalInformation}
                 onChange={(e) => handleEditChange('additionalInformation', e.target.value)}
                 className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Enter any additional information about this spare part"
+                placeholder="Enter any additional information"
               />
-            </FormField>
-
-            <FormField label="Attachment">
-              {!editAttachment ? (
-                <div>
-                  <input
-                    type="file"
-                    id="edit-file-upload"
-                    onChange={handleEditFileSelect}
-                    className="hidden"
-                    accept="*/*"
-                  />
-                  <label htmlFor="edit-file-upload">
-                    <Button type="button" variant="outline" asChild>
-                      <span>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Choose File
-                      </span>
-                    </Button>
-                  </label>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 p-3 border rounded-md">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{editAttachmentName || 'Existing attachment'}</p>
-                    {editUploadProgress > 0 && editUploadProgress < 100 && (
-                      <div className="mt-2">
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all"
-                            style={{ width: `${editUploadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">{editUploadProgress}% uploaded</p>
-                      </div>
-                    )}
-                  </div>
-                  <Button type="button" size="sm" variant="ghost" onClick={handleEditRemoveAttachment}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
             </FormField>
           </div>
           <DialogFooter>
@@ -788,6 +889,41 @@ export default function SparePartsPage() {
         confirmText="Delete"
         isDestructive
       />
+
+      {/* Used By Equipment Dialog */}
+      <Dialog open={viewUsedByDialogOpen} onOpenChange={setViewUsedByDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Equipment Using This Spare Part</DialogTitle>
+            <DialogDescription>
+              SP-{selectedPart?.partNumber.toString().padStart(4, '0')} - {selectedPart?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {equipmentUsingPart && equipmentUsingPart.length > 0 ? (
+              <div className="space-y-2">
+                {equipmentUsingPart.map((equipment) => (
+                  <div key={equipment.equipmentNumber.toString()} className="p-3 border rounded-lg">
+                    <div className="font-medium">{equipment.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      Equipment No: {equipment.equipmentNumber.toString()} | Tag: {equipment.equipmentTagNumber}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-8">
+                This spare part is not currently linked to any equipment
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewUsedByDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

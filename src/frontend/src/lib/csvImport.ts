@@ -1,4 +1,6 @@
 export function parseCSV(text: string): Record<string, string>[] {
+  if (!text) return [];
+  
   const lines = text.split('\n').filter((line) => line.trim());
   if (lines.length === 0) return [];
 
@@ -20,6 +22,8 @@ export function parseCSV(text: string): Record<string, string>[] {
 }
 
 function parseCSVLine(line: string): string[] {
+  if (!line) return [];
+  
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -47,6 +51,10 @@ function parseCSVLine(line: string): string[] {
 }
 
 export function validateEquipmentRow(row: Record<string, string>): { valid: boolean; error?: string } {
+  if (!row) {
+    return { valid: false, error: 'Invalid row data' };
+  }
+
   const name = row.name || row.Name || row.equipmentName || row.EquipmentName || '';
   const location = row.location || row.Location || '';
   const manufacturer = row.manufacturer || row.Manufacturer || '';
@@ -67,6 +75,10 @@ export function validateEquipmentRow(row: Record<string, string>): { valid: bool
 }
 
 export function validateSparePartRow(row: Record<string, string>): { valid: boolean; error?: string } {
+  if (!row) {
+    return { valid: false, error: 'Invalid row data' };
+  }
+
   const equipmentNumber = row.equipmentNumber || row.EquipmentNumber || '';
   const equipmentTagNumber = row.equipmentTagNumber || row.EquipmentTagNumber || '';
   const name = row.name || row.Name || row.partName || row.PartName || '';
@@ -82,8 +94,8 @@ export function validateSparePartRow(row: Record<string, string>): { valid: bool
   return { valid: true };
 }
 
-export function parseDateString(dateStr: string): bigint {
-  if (!dateStr) return BigInt(0);
+export function parseDateString(dateStr: string | undefined): bigint {
+  if (!dateStr || !dateStr.trim()) return BigInt(0);
 
   try {
     const date = new Date(dateStr);
@@ -94,8 +106,8 @@ export function parseDateString(dateStr: string): bigint {
   }
 }
 
-export function parseBigInt(value: string): bigint {
-  if (!value) return BigInt(0);
+export function parseBigInt(value: string | undefined): bigint {
+  if (!value || !value.trim()) return BigInt(0);
   try {
     return BigInt(parseInt(value, 10));
   } catch {

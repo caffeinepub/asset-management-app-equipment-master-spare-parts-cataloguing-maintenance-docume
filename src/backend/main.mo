@@ -1,8 +1,8 @@
-import Migration "migration";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
 import File "blob-storage/Storage";
+import Text "mo:core/Text";
 import Time "mo:core/Time";
 import MixinStorage "blob-storage/Mixin";
 import MixinAuthorization "authorization/MixinAuthorization";
@@ -10,7 +10,8 @@ import AccessControl "authorization/access-control";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
 
-(with migration = Migration.run)
+
+
 actor {
   include MixinStorage();
 
@@ -43,13 +44,12 @@ actor {
 
   public type SparePart = {
     partNumber : Nat;
-    equipmentNumber : Nat;
     name : Text;
     description : Text;
     quantity : Nat;
     supplier : Text;
     manufacturer : Text;
-    partNo : Text;
+    manufacturerPartNo : Text;
     modelSerial : Text;
     attachment : ?File.ExternalBlob;
     additionalInformation : Text;
@@ -89,7 +89,8 @@ actor {
   var nextDocId : Nat = 1;
 
   let equipmentMap = Map.empty<Nat, Equipment>();
-  let sparePartsMap = Map.empty<Nat, List.List<SparePart>>();
+  let sparePartsMap = Map.empty<Nat, SparePart>();
+  let equipmentSparePartsMap = Map.empty<Nat, List.List<Nat>>();
   let cataloguingMap = Map.empty<Nat, List.List<CataloguingRecord>>();
   let maintenanceMap = Map.empty<Nat, List.List<MaintenanceRecord>>();
   let documentMap = Map.empty<Nat, List.List<Document>>();
@@ -140,11 +141,133 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  public query ({ caller }) func getEquipment(equipmentNumber : Nat) : async ?Equipment {
+  // Create equipment - Check for duplicate entries (same equipmentTagNumber)
+  public shared ({ caller }) func createEquipment(equipment : Equipment) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view equipment");
+      Runtime.trap("Unauthorized: Only users can create equipment");
     };
-    equipmentMap.get(equipmentNumber);
+
+    switch (equipmentMap.get(equipment.equipmentNumber)) {
+      case (?_) {
+        Runtime.trap(
+          "Error: Equipment with number already exists (equipmentNumber = " # debug_show(equipment.equipmentNumber) # ")"
+        );
+      };
+      case (null) {
+        let existingTagNumber = equipmentMap.toArray().find(
+          func((_, eq)) {
+            eq.equipmentTagNumber == equipment.equipmentTagNumber;
+          }
+        );
+        if (existingTagNumber != null) {
+          Runtime.trap(
+            "Error: Equipment with tag no " # equipment.equipmentTagNumber # " already exists"
+          );
+        };
+        equipmentMap.add(equipment.equipmentNumber, equipment);
+        true;
+      };
+    };
+  };
+
+  // Create spare part - Check for duplicate entries (same manufacturerPartNo)
+  public shared ({ caller }) func createSparePart(part : SparePart) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can create spare parts");
+    };
+
+    switch (sparePartsMap.get(part.partNumber)) {
+      case (?_) {
+        Runtime.trap(
+          "Error: Spare part with part number already exists (partNumber = " # debug_show(part.partNumber) # ")"
+        );
+      };
+      case (null) {
+        let existingManufacturerPartNo = sparePartsMap.toArray().find(
+          func((_, sp)) {
+            sp.manufacturerPartNo == part.manufacturerPartNo;
+          }
+        );
+        if (existingManufacturerPartNo != null) {
+          Runtime.trap(
+            "Error: Spare part with manufacturer part no " # part.manufacturerPartNo # " already exists"
+          );
+        };
+        sparePartsMap.add(part.partNumber, part);
+        true;
+      };
+    };
+  };
+
+  // Query all equipment entries that match the searchTerm as substring
+  // Search across all fields in equipment, support queries filtered by field
+  // Optimize for performance in large datasets and validate against duplication
+  public query ({ caller }) func findEquipmentByMatching(
+    searchTerm : Text,
+    matchEquipmentNumber : Bool,
+    matchEquipmentTagNumber : Bool,
+    matchName : Bool,
+    matchModel : Bool,
+    matchSerialNumber : Bool,
+  ) : async [Equipment] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search equipment");
+    };
+
+    let lowerCaseTerm = searchTerm.toLower();
+
+    let foundEntries = equipmentMap.toArray().filter(
+      func((_, equipment)) : Bool {
+        let tagNumberMatches = if (matchEquipmentTagNumber) {
+          equipment.equipmentTagNumber.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        let nameMatches = if (matchName) {
+          equipment.name.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        let modelMatches = if (matchModel) {
+          equipment.model.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        let serialNumberMatches = if (matchSerialNumber) {
+          equipment.serialNumber.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        tagNumberMatches or nameMatches or modelMatches or serialNumberMatches;
+      }
+    );
+
+    foundEntries.map(func((_, equipment)) { equipment });
+  };
+
+  // Query all spare part entries that match the searchTerm as substring
+  // Search across all fields in equipment, support queries filtered by field
+  // Optimize for performance in large datasets and validate against duplication
+  public query ({ caller }) func findSparePartByMatching(
+    searchTerm : Text,
+    matchManufacturerPartNo : Bool,
+    matchName : Bool,
+    matchDescription : Bool,
+  ) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can search spare parts");
+    };
+
+    let lowerCaseTerm = searchTerm.toLower();
+
+    let foundEntries = sparePartsMap.toArray().filter(
+      func((_, sparePart)) : Bool {
+        let manufacturerPartNoMatches = if (matchManufacturerPartNo) {
+          sparePart.manufacturerPartNo.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        let nameMatches = if (matchName) {
+          sparePart.name.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        let descriptionMatches = if (matchDescription) {
+          sparePart.description.toLower().contains(#text lowerCaseTerm);
+        } else { false };
+        manufacturerPartNoMatches or nameMatches or descriptionMatches;
+      }
+    );
+
+    foundEntries.map(func((_, sparePart)) { sparePart });
   };
 
   public query ({ caller }) func getAllEquipment() : async [Equipment] {
@@ -152,6 +275,13 @@ actor {
       Runtime.trap("Unauthorized: Only users can view equipment");
     };
     Array.fromIter(equipmentMap.values());
+  };
+
+  public query ({ caller }) func getEquipment(equipmentNumber : Nat) : async ?Equipment {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view equipment");
+    };
+    equipmentMap.get(equipmentNumber);
   };
 
   public shared ({ caller }) func updateEquipment(equipment : Equipment) : async Bool {
@@ -180,51 +310,120 @@ actor {
     };
   };
 
-  public query ({ caller }) func getSpareParts(equipmentNumber : Nat) : async [SparePart] {
+  // Spare Part Functions
+  public shared ({ caller }) func addOrUpdateSparePart(part : SparePart, equipmentNumber : Nat) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can view spare parts");
+      Runtime.trap("Unauthorized: Only users can manage spare parts");
     };
-    switch (sparePartsMap.get(equipmentNumber)) {
-      case (null) { [] };
-      case (?parts) { parts.toArray() };
-    };
-  };
 
-  public shared ({ caller }) func updateSparePart(part : SparePart) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
-      Runtime.trap("Unauthorized: Only users can update spare parts");
-    };
-    switch (sparePartsMap.get(part.equipmentNumber)) {
-      case (null) { false };
-      case (?parts) {
-        let updatedParts = parts.map<SparePart, SparePart>(
-          func(p : SparePart) : SparePart {
-            if (p.partNumber == part.partNumber) { part } else { p };
-          },
-        );
-        sparePartsMap.add(part.equipmentNumber, updatedParts);
-        true;
+    // If the part is new, add it to the sparePartsMap
+    switch (sparePartsMap.get(part.partNumber)) {
+      case (null) {
+        sparePartsMap.add(part.partNumber, part);
+      };
+      case (?existingPart) {
+        // If the part number exists, update the existing part
+        sparePartsMap.add(part.partNumber, part);
       };
     };
+
+    // Link spare part to equipment
+    let partNumbers = switch (equipmentSparePartsMap.get(equipmentNumber)) {
+      case (null) { List.empty<Nat>() };
+      case (?existingParts) { existingParts };
+    };
+
+    // Check if the part number is already linked to the equipment
+    let partNumbersArray = partNumbers.toArray();
+    let alreadyLinked = partNumbersArray.find(func(x) { x == part.partNumber });
+
+    switch (alreadyLinked) {
+      case (null) {
+        // Add the part number to the list
+        partNumbers.add(part.partNumber);
+        equipmentSparePartsMap.add(equipmentNumber, partNumbers);
+      };
+      case (?_) {
+        // Part already linked, do nothing
+      };
+    };
+
+    true;
   };
 
-  public shared ({ caller }) func deleteSparePart(equipmentNumber : Nat, partNumber : Nat) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
-      Runtime.trap("Unauthorized: Only admins can delete spare parts");
+  public shared ({ caller }) func unlinkSparePartFromEquipment(equipmentNumber : Nat, partNumber : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can manage spare parts");
     };
-    switch (sparePartsMap.get(equipmentNumber)) {
+
+    switch (equipmentSparePartsMap.get(equipmentNumber)) {
       case (null) { false };
       case (?parts) {
         let filteredParts = parts.filter(
-          func(p : SparePart) : Bool { p.partNumber != partNumber },
+          func(p) { p != partNumber }
         );
-        sparePartsMap.add(equipmentNumber, filteredParts);
+        equipmentSparePartsMap.add(equipmentNumber, filteredParts);
         true;
       };
     };
   };
 
-  public query ({ caller }) func getCataloguingRecords(equipmentNumber : Nat) : async [CataloguingRecord] {
+  public query ({ caller }) func getAllSpareParts() : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view spare parts");
+    };
+    sparePartsMap.toArray().map(func((_, part)) { part });
+  };
+
+  public query ({ caller }) func getSparePartsForEquipment(equipmentNumber : Nat) : async [SparePart] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can view spare parts");
+    };
+
+    switch (equipmentSparePartsMap.get(equipmentNumber)) {
+      case (null) { [] };
+      case (?partNumbers) {
+        let partNumbersArray = partNumbers.toArray();
+        partNumbersArray.map(
+          func(partNumber) {
+            switch (sparePartsMap.get(partNumber)) {
+              case (null) {
+                {
+                  partNumber = 0;
+                  name = "Unknown";
+                  description = "";
+                  quantity = 0;
+                  supplier = "";
+                  manufacturer = "";
+                  manufacturerPartNo = "";
+                  modelSerial = "";
+                  attachment = null;
+                  additionalInformation = "";
+                };
+              };
+              case (?part) { part };
+            };
+          }
+        );
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteSparePartByPartNumber(partNumber : Nat) : async Bool {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can delete spare parts");
+    };
+
+    switch (sparePartsMap.get(partNumber)) {
+      case (null) { false };
+      case (?_) {
+        sparePartsMap.remove(partNumber);
+        true;
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllCataloguingRecords(equipmentNumber : Nat) : async [CataloguingRecord] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view cataloguing records");
     };
@@ -252,7 +451,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getMaintenanceRecords(equipmentNumber : Nat) : async [MaintenanceRecord] {
+  public query ({ caller }) func getAllMaintenanceRecords(equipmentNumber : Nat) : async [MaintenanceRecord] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view maintenance records");
     };
@@ -280,7 +479,7 @@ actor {
     };
   };
 
-  public query ({ caller }) func getDocuments(equipmentNumber : Nat) : async [Document] {
+  public query ({ caller }) func getAllDocuments(equipmentNumber : Nat) : async [Document] {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can view documents");
     };

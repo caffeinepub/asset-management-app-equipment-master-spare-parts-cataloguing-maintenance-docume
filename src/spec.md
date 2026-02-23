@@ -1,11 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Rebuild and publish a fresh, non-expired draft deployment of the current Maintenance Hub codebase.
+**Goal:** Fix the equipment list page crash caused by calling replace() on undefined equipment field values.
 
 **Planned changes:**
-- Generate a new draft build from the current repository state.
-- Publish the draft environment to a fresh draft URL (not expired at delivery).
-- Make no changes to application functionality, features, or UI behavior as part of the rebuild.
+- Add null/undefined checks before all string operations (particularly replace() calls) on equipment data fields in EquipmentListPage.tsx
+- Implement defensive handling for equipment fields used in search, filter, and display logic
+- Add fallback display values for empty or null equipment fields
 
-**User-visible outcome:** The user can open and use Maintenance Hub via a new draft URL that is active and not expired.
+**User-visible outcome:** The equipment list page loads successfully without errors, even when equipment records have missing or incomplete data fields.

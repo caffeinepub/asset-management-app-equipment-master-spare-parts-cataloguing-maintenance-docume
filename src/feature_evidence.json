@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-create-and-publish-a-new-draft-deployment-for-the-current-maintenance-hub-codebase-so-the-user-can-access-a-fresh-non-expired-draft-environment",
-      "featureTitle": "Create and publish a new draft deployment for the current Maintenance Hub codebase so the user can access a fresh, non-expired draft environment.",
+      "featureId": "feature-fix-the-cannot-read-properties-of-undefined-reading-replace-error-occurring-in-the-equipment-list-view-by-adding-null-undefined-checks-before-any-replace-method-calls-on-equipment-data-fields",
+      "featureTitle": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
       "files": [
-        "frontend/DRAFT_REBUILD_TRIGGER.md"
+        "frontend/src/pages/EquipmentListPage.tsx"
       ],
       "components": [
         "blob-storage@4.0.0",
@@ -18,6 +18,26 @@
       ],
       "testIds": [
         "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-defensive-null-undefined-handling-in-equipmentlistpage-tsx-for-all-equipment-fields-that-may-be-used-in-string-operations-particularly-focusing-on-fields-passed-to-search-filter-or-display-logic",
+      "featureTitle": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
+      "files": [
+        "frontend/src/pages/EquipmentListPage.tsx"
+      ],
+      "components": [
+        "blob-storage@4.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
       ],
       "confidence": "high"
     }
