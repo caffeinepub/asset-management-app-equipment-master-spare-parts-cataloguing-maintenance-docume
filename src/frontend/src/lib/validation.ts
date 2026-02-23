@@ -1,136 +1,168 @@
 /**
- * Validate required field
+ * Validation helper functions for form inputs
  */
-export function validateRequired(value: string | undefined | null, fieldName: string): string | null {
-  if (!value || value.trim() === '') {
-    return `${fieldName} is required`;
-  }
-  return null;
-}
+
+import type { AttributeDefinition } from '@/hooks/useQueries';
 
 /**
- * Validate number field
- */
-export function validateNumber(value: string | undefined | null, fieldName: string): string | null {
-  if (!value || value.trim() === '') {
-    return null; // Allow empty for optional fields
-  }
-  
-  const num = Number(value);
-  if (isNaN(num)) {
-    return `${fieldName} must be a valid number`;
-  }
-  
-  return null;
-}
-
-/**
- * Validate email field
- */
-export function validateEmail(value: string | undefined | null): string | null {
-  if (!value || value.trim() === '') {
-    return null; // Allow empty for optional fields
-  }
-  
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(value)) {
-    return 'Please enter a valid email address';
-  }
-  
-  return null;
-}
-
-/**
- * Validate attribute value based on type and rules
+ * Validate an attribute value based on its definition
  */
 export function validateAttributeValue(
-  value: string | undefined | null,
-  attributeType: string,
-  validationRules?: string,
-  required?: boolean
-): string | null {
+  value: string,
+  definition: AttributeDefinition
+): { valid: boolean; error?: string } {
   // Check required
-  if (required && (!value || value.trim() === '')) {
-    return 'This field is required';
+  if (definition.required && (!value || value.trim() === '')) {
+    return { valid: false, error: `${definition.name} is required` };
   }
 
-  // If empty and not required, it's valid
+  // If not required and empty, it's valid
   if (!value || value.trim() === '') {
-    return null;
+    return { valid: true };
   }
 
   // Type-specific validation
-  switch (attributeType.toLowerCase()) {
+  switch (definition.attributeType) {
     case 'number':
-    case 'integer':
-      const num = Number(value);
-      if (isNaN(num)) {
-        return 'Must be a valid number';
-      }
-      break;
-
-    case 'email':
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(value)) {
-        return 'Must be a valid email address';
-      }
-      break;
-
-    case 'url':
-      try {
-        new URL(value);
-      } catch {
-        return 'Must be a valid URL';
+      if (isNaN(Number(value))) {
+        return { valid: false, error: `${definition.name} must be a valid number` };
       }
       break;
 
     case 'date':
-      const date = new Date(value);
-      if (isNaN(date.getTime())) {
-        return 'Must be a valid date';
+      const dateValue = new Date(value);
+      if (isNaN(dateValue.getTime())) {
+        return { valid: false, error: `${definition.name} must be a valid date` };
+      }
+      break;
+
+    case 'select':
+      if (definition.allowedValues && !definition.allowedValues.includes(value)) {
+        return {
+          valid: false,
+          error: `${definition.name} must be one of: ${definition.allowedValues.join(', ')}`,
+        };
       }
       break;
   }
 
-  // Apply custom validation rules if provided
-  if (validationRules) {
-    // Parse validation rules (e.g., "min:0,max:100" or "pattern:^[A-Z]+$")
-    const rules = validationRules.split(',').map((r) => r.trim());
-    
-    for (const rule of rules) {
-      if (rule.startsWith('min:')) {
-        const min = Number(rule.substring(4));
-        if (!isNaN(min) && Number(value) < min) {
-          return `Must be at least ${min}`;
+  // Parse and apply validation rules
+  if (definition.validationRules) {
+    const rules = parseValidationRules(definition.validationRules);
+
+    // Min length
+    if (rules.minLength !== undefined && value.length < rules.minLength) {
+      return {
+        valid: false,
+        error: `${definition.name} must be at least ${rules.minLength} characters`,
+      };
+    }
+
+    // Max length
+    if (rules.maxLength !== undefined && value.length > rules.maxLength) {
+      return {
+        valid: false,
+        error: `${definition.name} must be at most ${rules.maxLength} characters`,
+      };
+    }
+
+    // Min value (for numbers)
+    if (rules.min !== undefined && definition.attributeType === 'number') {
+      const numValue = Number(value);
+      if (numValue < rules.min) {
+        return { valid: false, error: `${definition.name} must be at least ${rules.min}` };
+      }
+    }
+
+    // Max value (for numbers)
+    if (rules.max !== undefined && definition.attributeType === 'number') {
+      const numValue = Number(value);
+      if (numValue > rules.max) {
+        return { valid: false, error: `${definition.name} must be at most ${rules.max}` };
+      }
+    }
+
+    // Pattern (regex)
+    if (rules.pattern) {
+      try {
+        const regex = new RegExp(rules.pattern);
+        if (!regex.test(value)) {
+          return {
+            valid: false,
+            error: `${definition.name} does not match the required format`,
+          };
         }
-      } else if (rule.startsWith('max:')) {
-        const max = Number(rule.substring(4));
-        if (!isNaN(max) && Number(value) > max) {
-          return `Must be at most ${max}`;
-        }
-      } else if (rule.startsWith('minLength:')) {
-        const minLen = Number(rule.substring(10));
-        if (!isNaN(minLen) && value.length < minLen) {
-          return `Must be at least ${minLen} characters`;
-        }
-      } else if (rule.startsWith('maxLength:')) {
-        const maxLen = Number(rule.substring(10));
-        if (!isNaN(maxLen) && value.length > maxLen) {
-          return `Must be at most ${maxLen} characters`;
-        }
-      } else if (rule.startsWith('pattern:')) {
-        const pattern = rule.substring(8);
-        try {
-          const regex = new RegExp(pattern);
-          if (!regex.test(value)) {
-            return 'Invalid format';
-          }
-        } catch {
-          // Invalid regex pattern, skip
-        }
+      } catch (e) {
+        console.warn('Invalid regex pattern:', rules.pattern);
       }
     }
   }
 
-  return null;
+  return { valid: true };
+}
+
+/**
+ * Parse validation rules string into structured format
+ * Expected format: "minLength:5;maxLength:50;pattern:^[A-Z]"
+ */
+function parseValidationRules(rulesString: string): {
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  pattern?: string;
+} {
+  const rules: any = {};
+
+  if (!rulesString) return rules;
+
+  const parts = rulesString.split(';');
+  for (const part of parts) {
+    const [key, value] = part.split(':').map((s) => s.trim());
+    if (!key || !value) continue;
+
+    switch (key.toLowerCase()) {
+      case 'minlength':
+        rules.minLength = parseInt(value, 10);
+        break;
+      case 'maxlength':
+        rules.maxLength = parseInt(value, 10);
+        break;
+      case 'min':
+        rules.min = parseFloat(value);
+        break;
+      case 'max':
+        rules.max = parseFloat(value);
+        break;
+      case 'pattern':
+        rules.pattern = value;
+        break;
+    }
+  }
+
+  return rules;
+}
+
+/**
+ * Validate all attributes in a form
+ */
+export function validateAttributes(
+  attributes: Record<string, string>,
+  definitions: AttributeDefinition[]
+): { valid: boolean; errors: Record<string, string> } {
+  const errors: Record<string, string> = {};
+
+  for (const definition of definitions) {
+    const value = attributes[definition.name] || '';
+    const result = validateAttributeValue(value, definition);
+
+    if (!result.valid && result.error) {
+      errors[definition.name] = result.error;
+    }
+  }
+
+  return {
+    valid: Object.keys(errors).length === 0,
+    errors,
+  };
 }

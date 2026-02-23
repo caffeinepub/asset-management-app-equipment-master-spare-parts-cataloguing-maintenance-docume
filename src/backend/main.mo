@@ -1,4 +1,3 @@
-// OUTDATED: Attribute management features need to be implemented in the next iteration.
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
@@ -140,7 +139,6 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // Create equipment - Check for duplicate entries (same equipmentTagNumber)
   public shared ({ caller }) func createEquipment(equipment : Equipment) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create equipment");
@@ -169,7 +167,6 @@ actor {
     };
   };
 
-  // Create spare part - Check for duplicate entries (same manufacturerPartNo)
   public shared ({ caller }) func createSparePart(part : SparePart) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can create spare parts");
@@ -198,9 +195,6 @@ actor {
     };
   };
 
-  // Query all equipment entries that match the searchTerm as substring
-  // Search across all fields in equipment, support queries filtered by field
-  // Optimize for performance in large datasets and validate against duplication
   public query ({ caller }) func findEquipmentByMatching(
     searchTerm : Text,
     matchEquipmentNumber : Bool,
@@ -236,9 +230,6 @@ actor {
     foundEntries.map(func((_, equipment)) { equipment });
   };
 
-  // Query all spare part entries that match the searchTerm as substring
-  // Search across all fields in equipment, support queries filtered by field
-  // Optimize for performance in large datasets and validate against duplication
   public query ({ caller }) func findSparePartByMatching(
     searchTerm : Text,
     matchManufacturerPartNo : Bool,
@@ -309,42 +300,34 @@ actor {
     };
   };
 
-  // Spare Part Functions
   public shared ({ caller }) func addOrUpdateSparePart(part : SparePart, equipmentNumber : Nat) : async Bool {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can manage spare parts");
     };
 
-    // If the part is new, add it to the sparePartsMap
     switch (sparePartsMap.get(part.partNumber)) {
       case (null) {
         sparePartsMap.add(part.partNumber, part);
       };
-      case (?existingPart) {
-        // If the part number exists, update the existing part
+      case (?_) {
         sparePartsMap.add(part.partNumber, part);
       };
     };
 
-    // Link spare part to equipment
     let partNumbers = switch (equipmentSparePartsMap.get(equipmentNumber)) {
       case (null) { List.empty<Nat>() };
       case (?existingParts) { existingParts };
     };
 
-    // Check if the part number is already linked to the equipment
     let partNumbersArray = partNumbers.toArray();
     let alreadyLinked = partNumbersArray.find(func(x) { x == part.partNumber });
 
     switch (alreadyLinked) {
       case (null) {
-        // Add the part number to the list
         partNumbers.add(part.partNumber);
         equipmentSparePartsMap.add(equipmentNumber, partNumbers);
       };
-      case (?_) {
-        // Part already linked, do nothing
-      };
+      case (?_) {};
     };
 
     true;

@@ -27,7 +27,7 @@ export function normalizeError(error: unknown): string {
 /**
  * Extracts and cleans error messages from backend trap errors
  */
-function extractErrorMessage(message: string | undefined): string {
+export function extractErrorMessage(message: string | undefined): string {
   if (!message) {
     return 'An unknown error occurred';
   }

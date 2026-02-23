@@ -1,9 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document, UserProfile } from '@/backend';
-import { ExternalBlob, Variant_scheduled_completed_overdue, Variant_submitted_draft, EngineeringDiscipline } from '@/backend';
+import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document, UserProfile, ExternalBlob } from '@/backend';
+import { extractErrorMessage } from '@/lib/errors';
 
-// User Profile queries
+// ============================================================================
+// User Profile Queries
+// ============================================================================
+
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
@@ -31,7 +34,7 @@ export function useSaveCallerUserProfile() {
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.saveCallerUserProfile(profile);
+      await actor.saveCallerUserProfile(profile);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
@@ -39,22 +42,9 @@ export function useSaveCallerUserProfile() {
   });
 }
 
-// Equipment queries
-export function useGetNextEquipmentNumber() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<bigint>({
-    queryKey: ['next-equipment-number'],
-    queryFn: async () => {
-      if (!actor) return BigInt(1);
-      const allEquipment = await actor.getAllEquipment();
-      if (allEquipment.length === 0) return BigInt(1);
-      const maxNumber = allEquipment.reduce((max, eq) => eq.equipmentNumber > max ? eq.equipmentNumber : max, BigInt(0));
-      return maxNumber + BigInt(1);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
+// ============================================================================
+// Equipment Queries
+// ============================================================================
 
 export function useGetAllEquipment() {
   const { actor, isFetching } = useActor();
@@ -69,14 +59,34 @@ export function useGetAllEquipment() {
   });
 }
 
-export function useGetEquipmentList() {
+// Alias for compatibility
+export const useGetEquipmentList = useGetAllEquipment;
+
+export function useGetEquipment(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Equipment[]>({
-    queryKey: ['equipment-list'],
+  return useQuery<Equipment | null>({
+    queryKey: ['equipment', equipmentNumber?.toString()],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllEquipment();
+      if (!actor || !equipmentNumber) return null;
+      return actor.getEquipment(equipmentNumber);
+    },
+    enabled: !!actor && !isFetching && equipmentNumber !== null,
+  });
+}
+
+export function useGetNextEquipmentNumber() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<bigint>({
+    queryKey: ['nextEquipmentNumber'],
+    queryFn: async () => {
+      if (!actor) return BigInt(1);
+      const allEquipment = await actor.getAllEquipment();
+      if (allEquipment.length === 0) return BigInt(1);
+      const maxNumber = allEquipment.reduce((max, eq) => 
+        eq.equipmentNumber > max ? eq.equipmentNumber : max, BigInt(0));
+      return maxNumber + BigInt(1);
     },
     enabled: !!actor && !isFetching,
   });
@@ -87,49 +97,18 @@ export function useCreateEquipment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      name: string;
-      equipmentTagNumber: string;
-      location: string;
-      manufacturer: string;
-      model: string;
-      serial: string;
-      purchase: bigint;
-      warranty: bigint;
-      additionalInfo: string;
-      discipline: EngineeringDiscipline;
-    }) => {
+    mutationFn: async (equipment: Equipment) => {
       if (!actor) throw new Error('Actor not initialized');
-      
-      const allEquipment = await actor.getAllEquipment();
-      const nextNumber = allEquipment.length === 0 ? BigInt(1) : 
-        allEquipment.reduce((max, eq) => eq.equipmentNumber > max ? eq.equipmentNumber : max, BigInt(0)) + BigInt(1);
-      
-      const equipment: Equipment = {
-        equipmentNumber: nextNumber,
-        equipmentTagNumber: data.equipmentTagNumber,
-        name: data.name,
-        location: data.location,
-        manufacturer: data.manufacturer,
-        model: data.model,
-        serialNumber: data.serial,
-        purchaseDate: data.purchase,
-        warrantyExpiry: data.warranty,
-        additionalInformation: data.additionalInfo,
-        discipline: data.discipline,
-      };
-      
       const result = await actor.createEquipment(equipment);
+      if (!result) throw new Error('Failed to create equipment');
       return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
-      queryClient.invalidateQueries({ queryKey: ['next-equipment-number'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
-      queryClient.refetchQueries({ queryKey: ['equipment'] });
-      queryClient.refetchQueries({ queryKey: ['equipment-list'] });
-      queryClient.refetchQueries({ queryKey: ['next-equipment-number'] });
+      queryClient.invalidateQueries({ queryKey: ['nextEquipmentNumber'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
@@ -139,41 +118,18 @@ export function useUpdateEquipment() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      name: string;
-      equipmentTagNumber: string;
-      location: string;
-      manufacturer: string;
-      model: string;
-      serial: string;
-      purchase: bigint;
-      warranty: bigint;
-      additionalInfo: string;
-      discipline: EngineeringDiscipline;
-    }) => {
+    mutationFn: async (equipment: Equipment) => {
       if (!actor) throw new Error('Actor not initialized');
-      
-      const equipment: Equipment = {
-        equipmentNumber: data.equipmentNumber,
-        equipmentTagNumber: data.equipmentTagNumber,
-        name: data.name,
-        location: data.location,
-        manufacturer: data.manufacturer,
-        model: data.model,
-        serialNumber: data.serial,
-        purchaseDate: data.purchase,
-        warrantyExpiry: data.warranty,
-        additionalInformation: data.additionalInfo,
-        discipline: data.discipline,
-      };
-      
-      return actor.updateEquipment(equipment);
+      const result = await actor.updateEquipment(equipment);
+      if (!result) throw new Error('Failed to update equipment');
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, equipment) => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
+      queryClient.invalidateQueries({ queryKey: ['equipment', equipment.equipmentNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
@@ -185,63 +141,74 @@ export function useDeleteEquipment() {
   return useMutation({
     mutationFn: async (equipmentNumber: bigint) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteEquipment(equipmentNumber);
+      const result = await actor.deleteEquipment(equipmentNumber);
+      if (!result) throw new Error('Failed to delete equipment');
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
-      queryClient.invalidateQueries({ queryKey: ['equipment-list'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
 
-// Global Search queries
+export function useFindEquipmentByMatching() {
+  const { actor } = useActor();
+
+  return useMutation({
+    mutationFn: async ({
+      searchTerm,
+      matchEquipmentNumber = false,
+      matchEquipmentTagNumber = true,
+      matchName = true,
+      matchModel = true,
+      matchSerialNumber = true,
+    }: {
+      searchTerm: string;
+      matchEquipmentNumber?: boolean;
+      matchEquipmentTagNumber?: boolean;
+      matchName?: boolean;
+      matchModel?: boolean;
+      matchSerialNumber?: boolean;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.findEquipmentByMatching(
+        searchTerm,
+        matchEquipmentNumber,
+        matchEquipmentTagNumber,
+        matchName,
+        matchModel,
+        matchSerialNumber
+      );
+    },
+  });
+}
+
+// Global search for equipment
 export function useGlobalSearchEquipment(searchTerm: string) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Equipment[]>({
-    queryKey: ['globalSearch', 'equipment', searchTerm],
+    queryKey: ['globalSearchEquipment', searchTerm],
     queryFn: async () => {
       if (!actor || searchTerm.length < 2) return [];
-      return actor.findEquipmentByMatching(
-        searchTerm,
-        false,
-        true,
-        true,
-        true,
-        true
-      );
+      return actor.findEquipmentByMatching(searchTerm, false, true, true, true, true);
     },
     enabled: !!actor && !isFetching && searchTerm.length >= 2,
-    staleTime: 5000,
   });
 }
 
-export function useGlobalSearchSpareParts(searchTerm: string) {
-  const { actor, isFetching } = useActor();
+// ============================================================================
+// Spare Parts Queries
+// ============================================================================
 
-  return useQuery<SparePart[]>({
-    queryKey: ['globalSearch', 'spareParts', searchTerm],
-    queryFn: async () => {
-      if (!actor || searchTerm.length < 2) return [];
-      return actor.findSparePartByMatching(
-        searchTerm,
-        true,
-        true,
-        true
-      );
-    },
-    enabled: !!actor && !isFetching && searchTerm.length >= 2,
-    staleTime: 5000,
-  });
-}
-
-// Spare Parts queries
 export function useGetAllSpareParts() {
   const { actor, isFetching } = useActor();
 
   return useQuery<SparePart[]>({
-    queryKey: ['all-spare-parts'],
+    queryKey: ['spareParts'],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllSpareParts();
@@ -250,11 +217,11 @@ export function useGetAllSpareParts() {
   });
 }
 
-export function useGetSparePartsByEquipment(equipmentNumber: bigint | null) {
+export function useGetSparePartsForEquipment(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<SparePart[]>({
-    queryKey: ['spare-parts', equipmentNumber?.toString()],
+    queryKey: ['spareParts', 'equipment', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
       return actor.getSparePartsForEquipment(equipmentNumber);
@@ -263,20 +230,169 @@ export function useGetSparePartsByEquipment(equipmentNumber: bigint | null) {
   });
 }
 
+// Alias for compatibility
+export const useGetSparePartsByEquipment = useGetSparePartsForEquipment;
+
+export function useCreateSparePart() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (part: SparePart) => {
+      if (!actor) throw new Error('Actor not initialized');
+      const result = await actor.createSparePart(part);
+      if (!result) throw new Error('Failed to create spare part');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+export function useAddOrUpdateSparePart() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ part, equipmentNumber }: { part: SparePart; equipmentNumber: bigint }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      const result = await actor.addOrUpdateSparePart(part, equipmentNumber);
+      if (!result) throw new Error('Failed to add or update spare part');
+      return result;
+    },
+    onSuccess: (_, { equipmentNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
+      queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Alias for compatibility
+export const useUpdateSparePart = useAddOrUpdateSparePart;
+
+export function useUnlinkSparePartFromEquipment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ equipmentNumber, partNumber }: { equipmentNumber: bigint; partNumber: bigint }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      const result = await actor.unlinkSparePartFromEquipment(equipmentNumber, partNumber);
+      if (!result) throw new Error('Failed to unlink spare part');
+      return result;
+    },
+    onSuccess: (_, { equipmentNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+export function useDeleteSparePartByPartNumber() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (partNumber: bigint) => {
+      if (!actor) throw new Error('Actor not initialized');
+      const result = await actor.deleteSparePartByPartNumber(partNumber);
+      if (!result) throw new Error('Failed to delete spare part');
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Alias for compatibility
+export const useDeleteSparePart = useDeleteSparePartByPartNumber;
+
+export function useFindSparePartByMatching() {
+  const { actor } = useActor();
+
+  return useMutation({
+    mutationFn: async ({
+      searchTerm,
+      matchManufacturerPartNo = true,
+      matchName = true,
+      matchDescription = true,
+    }: {
+      searchTerm: string;
+      matchManufacturerPartNo?: boolean;
+      matchName?: boolean;
+      matchDescription?: boolean;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.findSparePartByMatching(searchTerm, matchManufacturerPartNo, matchName, matchDescription);
+    },
+  });
+}
+
+// Alias for compatibility
+export const useSearchSpareParts = useFindSparePartByMatching;
+
+// Global search for spare parts
+export function useGlobalSearchSpareParts(searchTerm: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePart[]>({
+    queryKey: ['globalSearchSpareParts', searchTerm],
+    queryFn: async () => {
+      if (!actor || searchTerm.length < 2) return [];
+      return actor.findSparePartByMatching(searchTerm, true, true, true);
+    },
+    enabled: !!actor && !isFetching && searchTerm.length >= 2,
+  });
+}
+
+// Link existing spare part to equipment
+export function useLinkExistingSparePart() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ part, equipmentNumber }: { part: SparePart; equipmentNumber: bigint }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      const result = await actor.addOrUpdateSparePart(part, equipmentNumber);
+      if (!result) throw new Error('Failed to link spare part');
+      return result;
+    },
+    onSuccess: (_, { equipmentNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Get equipment using a spare part
 export function useGetEquipmentUsingSparePart(partNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Equipment[]>({
-    queryKey: ['equipment-using-part', partNumber?.toString()],
+    queryKey: ['equipmentUsingSparePart', partNumber?.toString()],
     queryFn: async () => {
       if (!actor || !partNumber) return [];
-      
       const allEquipment = await actor.getAllEquipment();
       const equipmentWithPart: Equipment[] = [];
+      
       for (const equipment of allEquipment) {
         const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
-        const hasPart = spareParts.some((part) => part.partNumber === partNumber);
-        if (hasPart) {
+        if (spareParts.some(sp => sp.partNumber === partNumber)) {
           equipmentWithPart.push(equipment);
         }
       }
@@ -287,227 +403,371 @@ export function useGetEquipmentUsingSparePart(partNumber: bigint | null) {
   });
 }
 
-export function useCreateSparePart() {
+// ============================================================================
+// Cataloguing Module Queries (Pending Backend Implementation)
+// ============================================================================
+
+export type AttributeDefinition = {
+  name: string;
+  attributeType: 'text' | 'number' | 'textarea' | 'select' | 'date';
+  validationRules?: string;
+  required: boolean;
+  allowedValues?: string[];
+};
+
+export type SparePartWithAttributes = {
+  partNumber: bigint;
+  noun: string;
+  modifier: string;
+  attributes: Record<string, string>;
+  description: string;
+  equipmentList?: Equipment[];
+};
+
+// Import attribute template from Excel file
+export function useImportAttributeTemplate() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      name: string;
-      description: string;
-      quantity: bigint;
-      supplier: string;
-      manufacturer: string;
-      partNo: string;
-      modelSerial: string;
-      attachment: ExternalBlob | null;
-      additionalInfo: string;
-    }) => {
+    mutationFn: async (excelBlob: ExternalBlob) => {
       if (!actor) throw new Error('Actor not initialized');
       
-      const allParts = await actor.getAllSpareParts();
-      const nextPartNumber = allParts.length === 0 ? BigInt(1) :
-        allParts.reduce((max, p) => p.partNumber > max ? p.partNumber : max, BigInt(0)) + BigInt(1);
-      
-      const sparePart: SparePart = {
-        partNumber: nextPartNumber,
-        name: data.name,
-        description: data.description,
-        quantity: data.quantity,
-        supplier: data.supplier,
-        manufacturer: data.manufacturer,
-        manufacturerPartNo: data.partNo,
-        modelSerial: data.modelSerial,
-        attachment: data.attachment || undefined,
-        additionalInformation: data.additionalInfo,
-      };
-      
-      const success = await actor.createSparePart(sparePart);
-      if (!success) {
-        throw new Error('Failed to create spare part');
+      // Backend method required: importAttributeTemplateFromExcel
+      if (!('importAttributeTemplateFromExcel' in actor)) {
+        throw new Error('Backend method importAttributeTemplateFromExcel not implemented');
       }
       
-      // Now link it to the equipment
-      await actor.addOrUpdateSparePart(sparePart, data.equipmentNumber);
-      
-      return nextPartNumber;
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
-    },
-  });
-}
-
-export function useLinkExistingSparePart() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      equipmentNumber: bigint;
-      partNumber: bigint;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      const allParts = await actor.getAllSpareParts();
-      const existingPart = allParts.find((p) => p.partNumber === data.partNumber);
-      
-      if (!existingPart) {
-        throw new Error('Spare part not found');
-      }
-      
-      return actor.addOrUpdateSparePart(existingPart, data.equipmentNumber);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['equipment-using-part', variables.partNumber.toString()] });
-    },
-  });
-}
-
-export function useUpdateSparePart() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      partNumber: bigint;
-      name: string;
-      description: string;
-      quantity: bigint;
-      supplier: string;
-      manufacturer: string;
-      partNo: string;
-      modelSerial: string;
-      attachment: ExternalBlob | null;
-      additionalInfo: string;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      const allEquipment = await actor.getAllEquipment();
-      let targetEquipment: bigint | null = null;
-      
-      for (const equipment of allEquipment) {
-        const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
-        const hasPart = spareParts.some((part) => part.partNumber === data.partNumber);
-        if (hasPart) {
-          targetEquipment = equipment.equipmentNumber;
-          break;
-        }
-      }
-      
-      if (!targetEquipment) {
-        return false;
-      }
-      
-      const sparePart: SparePart = {
-        partNumber: data.partNumber,
-        name: data.name,
-        description: data.description,
-        quantity: data.quantity,
-        supplier: data.supplier,
-        manufacturer: data.manufacturer,
-        manufacturerPartNo: data.partNo,
-        modelSerial: data.modelSerial,
-        attachment: data.attachment || undefined,
-        additionalInformation: data.additionalInfo,
-      };
-      
-      return actor.addOrUpdateSparePart(sparePart, targetEquipment);
+      const result = await (actor as any).importAttributeTemplateFromExcel(excelBlob);
+      return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
-      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
+      queryClient.invalidateQueries({ queryKey: ['attributeDefinitions'] });
+      queryClient.invalidateQueries({ queryKey: ['nouns'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
 
-export function useDeleteSparePart() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (partNumber: bigint) => {
-      if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteSparePartByPartNumber(partNumber);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spare-parts'] });
-      queryClient.invalidateQueries({ queryKey: ['all-spare-parts'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-report'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-search'] });
-      queryClient.invalidateQueries({ queryKey: ['globalSearch'] });
-    },
-  });
-}
-
-// Spare Parts Search queries
-export function useSearchSpareParts(criteria: {
-  equipmentTagNumber?: string;
-  modelSerial?: string;
-  partNo?: string;
-  manufacturer?: string;
-}) {
+// Get all attribute definitions
+export function useGetAttributeDefinitions() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<SparePart[]>({
-    queryKey: ['spare-parts-search', criteria],
+  return useQuery<AttributeDefinition[]>({
+    queryKey: ['attributeDefinitions'],
     queryFn: async () => {
       if (!actor) return [];
-
-      const allEquipment = await actor.getAllEquipment();
       
-      if (criteria.equipmentTagNumber && criteria.equipmentTagNumber.trim()) {
-        const matchingEquipment = allEquipment.filter(eq => 
-          eq.equipmentTagNumber.toLowerCase().includes(criteria.equipmentTagNumber!.toLowerCase())
-        );
-        
-        const allParts = await Promise.all(
-          matchingEquipment.map(eq => actor.getSparePartsForEquipment(eq.equipmentNumber))
-        );
-        return allParts.flat();
+      // Backend method required: getAttributeDefinitions
+      if (!('getAttributeDefinitions' in actor)) {
+        console.warn('Backend method getAttributeDefinitions not implemented');
+        return [];
       }
-
-      const allParts = await actor.getAllSpareParts();
-
-      if (criteria.modelSerial && criteria.modelSerial.trim()) {
-        return allParts.filter(p => 
-          p.modelSerial.toLowerCase().includes(criteria.modelSerial!.toLowerCase())
-        );
-      }
-
-      if (criteria.partNo && criteria.partNo.trim()) {
-        return allParts.filter(p => 
-          p.manufacturerPartNo.toLowerCase().includes(criteria.partNo!.toLowerCase())
-        );
-      }
-
-      if (criteria.manufacturer && criteria.manufacturer.trim()) {
-        return allParts.filter(p => 
-          p.manufacturer.toLowerCase().includes(criteria.manufacturer!.toLowerCase())
-        );
-      }
-
-      return allParts;
+      
+      return (actor as any).getAttributeDefinitions();
     },
     enabled: !!actor && !isFetching,
   });
 }
 
-// Cataloguing queries
-export function useGetCataloguingRecords(equipmentNumber: bigint | null) {
+// Get list of nouns
+export function useGetNouns() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['nouns'],
+    queryFn: async () => {
+      if (!actor) return [];
+      
+      // Backend method required: getNouns
+      if (!('getNouns' in actor)) {
+        console.warn('Backend method getNouns not implemented');
+        return [];
+      }
+      
+      return (actor as any).getNouns();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Get modifiers for a specific noun
+export function useGetModifiers(noun: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['modifiers', noun],
+    queryFn: async () => {
+      if (!actor || !noun) return [];
+      
+      // Backend method required: getModifiersForNoun
+      if (!('getModifiersForNoun' in actor)) {
+        console.warn('Backend method getModifiersForNoun not implemented');
+        return [];
+      }
+      
+      return (actor as any).getModifiersForNoun(noun);
+    },
+    enabled: !!actor && !isFetching && !!noun,
+  });
+}
+
+// Get attributes for a specific noun-modifier combination
+export function useGetAttributesForNounModifier(noun: string, modifier: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<AttributeDefinition[]>({
+    queryKey: ['attributes', noun, modifier],
+    queryFn: async () => {
+      if (!actor || !noun || !modifier) return [];
+      
+      // Backend method required: getAttributesForNounModifier
+      if (!('getAttributesForNounModifier' in actor)) {
+        console.warn('Backend method getAttributesForNounModifier not implemented');
+        return [];
+      }
+      
+      return (actor as any).getAttributesForNounModifier(noun, modifier);
+    },
+    enabled: !!actor && !isFetching && !!noun && !!modifier,
+  });
+}
+
+// Get next spare part number
+export function useGetNextSparePartNumber() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<bigint>({
+    queryKey: ['nextSparePartNumber'],
+    queryFn: async () => {
+      if (!actor) return BigInt(0);
+      
+      // Backend method required: getNextSparePartNumber
+      if (!('getNextSparePartNumber' in actor)) {
+        console.warn('Backend method getNextSparePartNumber not implemented');
+        return BigInt(0);
+      }
+      
+      return (actor as any).getNextSparePartNumber();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Create spare part with attributes
+export function useCreateSparePartWithAttributes() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      noun,
+      modifier,
+      attributes,
+    }: {
+      noun: string;
+      modifier: string;
+      attributes: Array<[string, string]>;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      
+      // Backend method required: createSparePartWithAttributes
+      if (!('createSparePartWithAttributes' in actor)) {
+        throw new Error('Backend method createSparePartWithAttributes not implemented');
+      }
+      
+      const partNumber = await (actor as any).createSparePartWithAttributes(noun, modifier, attributes);
+      return partNumber;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
+      queryClient.invalidateQueries({ queryKey: ['nextSparePartNumber'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Update spare part attributes
+export function useUpdateSparePartAttributes() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      partNumber,
+      attributes,
+    }: {
+      partNumber: bigint;
+      attributes: Array<[string, string]>;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      
+      // Backend method required: updateSparePartAttributes
+      if (!('updateSparePartAttributes' in actor)) {
+        throw new Error('Backend method updateSparePartAttributes not implemented');
+      }
+      
+      const result = await (actor as any).updateSparePartAttributes(partNumber, attributes);
+      if (!result) throw new Error('Failed to update spare part attributes');
+      return result;
+    },
+    onSuccess: (_, { partNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
+      queryClient.invalidateQueries({ queryKey: ['sparePartByNumber', partNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Get spare part by number (with attributes)
+export function useGetSparePartByNumber(partNumber: bigint | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePartWithAttributes | null>({
+    queryKey: ['sparePartByNumber', partNumber?.toString()],
+    queryFn: async () => {
+      if (!actor || !partNumber) return null;
+      
+      // Backend method required: getSparePartByNumber
+      if (!('getSparePartByNumber' in actor)) {
+        console.warn('Backend method getSparePartByNumber not implemented');
+        return null;
+      }
+      
+      return (actor as any).getSparePartByNumber(partNumber);
+    },
+    enabled: !!actor && !isFetching && partNumber !== null,
+  });
+}
+
+// Get all spare parts with attributes (for cataloguing)
+export function useGetAllSparePartsWithAttributes() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePartWithAttributes[]>({
+    queryKey: ['sparePartsWithAttributes'],
+    queryFn: async () => {
+      if (!actor) return [];
+      
+      // Backend method required: getAllSparePartsWithAttributes
+      if (!('getAllSparePartsWithAttributes' in actor)) {
+        console.warn('Backend method getAllSparePartsWithAttributes not implemented');
+        return [];
+      }
+      
+      return (actor as any).getAllSparePartsWithAttributes();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Get equipment for spare part
+export function useGetEquipmentForSparePart(partNumber: bigint | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Equipment[]>({
+    queryKey: ['equipmentForSparePart', partNumber?.toString()],
+    queryFn: async () => {
+      if (!actor || !partNumber) return [];
+      
+      // Backend method required: getEquipmentForSparePart
+      if (!('getEquipmentForSparePart' in actor)) {
+        console.warn('Backend method getEquipmentForSparePart not implemented');
+        return [];
+      }
+      
+      return (actor as any).getEquipmentForSparePart(partNumber);
+    },
+    enabled: !!actor && !isFetching && partNumber !== null,
+  });
+}
+
+// Link spare part to equipment
+export function useLinkSparePartToEquipment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ partNumber, equipmentNumber }: { partNumber: bigint; equipmentNumber: bigint }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      
+      // Backend method required: linkSparePartToEquipment
+      if (!('linkSparePartToEquipment' in actor)) {
+        throw new Error('Backend method linkSparePartToEquipment not implemented');
+      }
+      
+      const result = await (actor as any).linkSparePartToEquipment(partNumber, equipmentNumber);
+      if (!result) throw new Error('Failed to link spare part to equipment');
+      return result;
+    },
+    onSuccess: (_, { partNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['equipmentForSparePart', partNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Unlink spare part from equipment (cataloguing version)
+export function useUnlinkSparePartFromEquipmentCataloguing() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ partNumber, equipmentNumber }: { partNumber: bigint; equipmentNumber: bigint }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      
+      // Use existing backend method
+      const result = await actor.unlinkSparePartFromEquipment(equipmentNumber, partNumber);
+      if (!result) throw new Error('Failed to unlink spare part from equipment');
+      return result;
+    },
+    onSuccess: (_, { partNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['equipmentForSparePart', partNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
+    },
+  });
+}
+
+// Advanced search for spare parts
+export function useSearchSparePartsAdvanced(filters: any) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePartWithAttributes[]>({
+    queryKey: ['sparePartsAdvancedSearch', filters],
+    queryFn: async () => {
+      if (!actor) return [];
+      
+      // Backend method required: searchSparePartsAdvanced
+      if (!('searchSparePartsAdvanced' in actor)) {
+        console.warn('Backend method searchSparePartsAdvanced not implemented');
+        return [];
+      }
+      
+      return (actor as any).searchSparePartsAdvanced(filters);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ============================================================================
+// Cataloguing Records Queries
+// ============================================================================
+
+export function useGetAllCataloguingRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<CataloguingRecord[]>({
-    queryKey: ['cataloguing', equipmentNumber?.toString()],
+    queryKey: ['cataloguingRecords', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
       return actor.getAllCataloguingRecords(equipmentNumber);
@@ -523,25 +783,61 @@ export function useUpdateCataloguingRecord() {
   return useMutation({
     mutationFn: async (record: CataloguingRecord) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.updateCataloguingRecord(record);
+      const result = await actor.updateCataloguingRecord(record);
+      if (!result) throw new Error('Failed to update cataloguing record');
+      return result;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['cataloguing', variables.equipmentNumber.toString()] });
+    onSuccess: (_, record) => {
+      queryClient.invalidateQueries({ queryKey: ['cataloguingRecords', record.equipmentNumber.toString()] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
 
-// Maintenance queries
-export function useGetMaintenanceRecords(equipmentNumber: bigint | null) {
+// ============================================================================
+// Maintenance Records Queries
+// ============================================================================
+
+export function useGetAllMaintenanceRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<MaintenanceRecord[]>({
-    queryKey: ['maintenance', equipmentNumber?.toString()],
+    queryKey: ['maintenanceRecords', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
       return actor.getAllMaintenanceRecords(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
+  });
+}
+
+export type MaintenanceDueReportItem = {
+  equipment: Equipment;
+  maintenanceRecords: MaintenanceRecord[];
+};
+
+export function useGetMaintenanceDueReport() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<MaintenanceDueReportItem[]>({
+    queryKey: ['maintenanceDueReport'],
+    queryFn: async () => {
+      if (!actor) return [];
+      const allEquipment = await actor.getAllEquipment();
+      const results: MaintenanceDueReportItem[] = [];
+      
+      for (const equipment of allEquipment) {
+        const maintenanceRecords = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
+        if (maintenanceRecords.length > 0) {
+          results.push({ equipment, maintenanceRecords });
+        }
+      }
+      
+      return results;
+    },
+    enabled: !!actor && !isFetching,
   });
 }
 
@@ -552,16 +848,25 @@ export function useUpdateMaintenanceRecord() {
   return useMutation({
     mutationFn: async (record: MaintenanceRecord) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.updateMaintenanceRecord(record);
+      const result = await actor.updateMaintenanceRecord(record);
+      if (!result) throw new Error('Failed to update maintenance record');
+      return result;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['maintenance', variables.equipmentNumber.toString()] });
+    onSuccess: (_, record) => {
+      queryClient.invalidateQueries({ queryKey: ['maintenanceRecords', record.equipmentNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['maintenanceDueReport'] });
+    },
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
   });
 }
 
-// Documents queries
-export function useGetDocuments(equipmentNumber: bigint | null) {
+// ============================================================================
+// Documents Queries
+// ============================================================================
+
+export function useGetAllDocuments(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<Document[]>({
@@ -579,322 +884,17 @@ export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { equipmentNumber: bigint; docId: bigint }) => {
+    mutationFn: async ({ equipmentNumber, docId }: { equipmentNumber: bigint; docId: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteDocument(data.equipmentNumber, data.docId);
+      const result = await actor.deleteDocument(equipmentNumber, docId);
+      if (!result) throw new Error('Failed to delete document');
+      return result;
     },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['documents', variables.equipmentNumber.toString()] });
+    onSuccess: (_, { equipmentNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['documents', equipmentNumber.toString()] });
     },
-  });
-}
-
-// Reports queries
-export function useGetEquipmentListReport() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Equipment[]>({
-    queryKey: ['equipment-list-report'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllEquipment();
+    onError: (error: any) => {
+      throw new Error(extractErrorMessage(error));
     },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetSparePartsByEquipmentReport() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Array<{ equipment: Equipment; spareParts: SparePart[] }>>({
-    queryKey: ['spare-parts-report'],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      const allEquipment = await actor.getAllEquipment();
-      const results = await Promise.all(
-        allEquipment.map(async (equipment) => {
-          const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
-          return { equipment, spareParts };
-        })
-      );
-      
-      return results;
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetMaintenanceDueReport() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Array<{ equipment: Equipment; maintenanceRecords: MaintenanceRecord[] }>>({
-    queryKey: ['maintenance-due-report'],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      const allEquipment = await actor.getAllEquipment();
-      const results = await Promise.all(
-        allEquipment.map(async (equipment) => {
-          const maintenanceRecords = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
-          return { equipment, maintenanceRecords };
-        })
-      );
-      
-      return results;
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ============================================
-// NEW CATALOGUING MODULE QUERIES (Backend Pending)
-// ============================================
-
-// Attribute Template Import
-export function useImportAttributeTemplate() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (excelBlob: ExternalBlob) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend method: importAttributeTemplateFromExcel(excelBlob: ExternalBlob): async Bool
-      throw new Error('Backend method importAttributeTemplateFromExcel not yet implemented');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['nouns'] });
-      queryClient.invalidateQueries({ queryKey: ['modifiers'] });
-      queryClient.invalidateQueries({ queryKey: ['attributes'] });
-    },
-  });
-}
-
-// Noun-Modifier Queries
-export function useGetNouns() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['nouns'],
-    queryFn: async () => {
-      if (!actor) return [];
-      // Backend method: getNouns(): async [Text]
-      throw new Error('Backend method getNouns not yet implemented');
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetModifiers(noun: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['modifiers', noun],
-    queryFn: async () => {
-      if (!actor || !noun) return [];
-      // Backend method: getModifiersForNoun(noun: Text): async [Text]
-      throw new Error('Backend method getModifiersForNoun not yet implemented');
-    },
-    enabled: !!actor && !isFetching && !!noun,
-  });
-}
-
-export interface AttributeDefinition {
-  name: string;
-  attributeType: string;
-  validationRules?: string;
-  required: boolean;
-}
-
-export function useGetAttributesForNounModifier(noun: string, modifier: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<AttributeDefinition[]>({
-    queryKey: ['attributes', noun, modifier],
-    queryFn: async () => {
-      if (!actor || !noun || !modifier) return [];
-      // Backend method: getAttributesForNounModifier(noun: Text, modifier: Text): async [AttributeDefinition]
-      throw new Error('Backend method getAttributesForNounModifier not yet implemented');
-    },
-    enabled: !!actor && !isFetching && !!noun && !!modifier,
-  });
-}
-
-// Spare Part Master Queries
-export function useGetNextSparePartNumber() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<bigint>({
-    queryKey: ['next-spare-part-number'],
-    queryFn: async () => {
-      if (!actor) return BigInt(1);
-      // Backend method: getNextSparePartNumber(): async Nat
-      throw new Error('Backend method getNextSparePartNumber not yet implemented');
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export interface SparePartWithAttributes {
-  partNumber: bigint;
-  noun: string;
-  modifier: string;
-  attributes: Record<string, string>;
-  shortDescription: string;
-}
-
-export function useGetSparePartByNumber(partNumber: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<SparePartWithAttributes | null>({
-    queryKey: ['spare-part-with-attributes', partNumber?.toString()],
-    queryFn: async () => {
-      if (!actor || !partNumber) return null;
-      // Backend method: getSparePartByNumber(partNumber: Nat): async ?SparePartWithAttributes
-      throw new Error('Backend method getSparePartByNumber not yet implemented');
-    },
-    enabled: !!actor && !isFetching && partNumber !== null,
-  });
-}
-
-export function useGetAllSparePartsWithAttributes() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<SparePartWithAttributes[]>({
-    queryKey: ['all-spare-parts-with-attributes'],
-    queryFn: async () => {
-      if (!actor) return [];
-      // Backend method: getAllSparePartsWithAttributes(): async [SparePartWithAttributes]
-      throw new Error('Backend method getAllSparePartsWithAttributes not yet implemented');
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useCreateSparePartWithAttributes() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      noun: string;
-      modifier: string;
-      attributes: Array<[string, string]>;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend method: createSparePartWithAttributes(noun: Text, modifier: Text, attributes: [(Text, Text)]): async Nat
-      throw new Error('Backend method createSparePartWithAttributes not yet implemented');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['all-spare-parts-with-attributes'] });
-      queryClient.invalidateQueries({ queryKey: ['next-spare-part-number'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-advanced-search'] });
-    },
-  });
-}
-
-export function useUpdateSparePartAttributes() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      partNumber: bigint;
-      attributes: Array<[string, string]>;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend method: updateSparePartAttributes(partNumber: Nat, attributes: [(Text, Text)]): async Bool
-      throw new Error('Backend method updateSparePartAttributes not yet implemented');
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['spare-part-with-attributes', variables.partNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['all-spare-parts-with-attributes'] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts-advanced-search'] });
-    },
-  });
-}
-
-// Equipment-Spare Part Linking
-export function useGetEquipmentForSparePart(partNumber: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Equipment[]>({
-    queryKey: ['equipment-for-spare-part', partNumber?.toString()],
-    queryFn: async () => {
-      if (!actor || !partNumber) return [];
-      // Backend method: getEquipmentForSparePart(partNumber: Nat): async [Equipment]
-      throw new Error('Backend method getEquipmentForSparePart not yet implemented');
-    },
-    enabled: !!actor && !isFetching && partNumber !== null,
-  });
-}
-
-export function useLinkSparePartToEquipment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      partNumber: bigint;
-      equipmentNumber: bigint;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend method: linkSparePartToEquipment(partNumber: Nat, equipmentNumber: Nat): async Bool
-      throw new Error('Backend method linkSparePartToEquipment not yet implemented');
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['equipment-for-spare-part', variables.partNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
-    },
-  });
-}
-
-export function useUnlinkSparePartFromEquipment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      partNumber: bigint;
-      equipmentNumber: bigint;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      // Backend method: unlinkSparePartFromEquipment(partNumber: Nat, equipmentNumber: Nat): async Bool
-      throw new Error('Backend method unlinkSparePartFromEquipment not yet implemented');
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['equipment-for-spare-part', variables.partNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
-    },
-  });
-}
-
-// Advanced Search
-export interface SparePartSearchResult extends SparePartWithAttributes {
-  equipmentList: Equipment[];
-}
-
-export function useSearchSparePartsAdvanced(filters: {
-  equipmentNo?: string;
-  tagNo?: string;
-  sparePartNo?: string;
-  spareName?: string;
-  description?: string;
-  modelNo?: string;
-  partNumber?: string;
-  serialNum?: string;
-}) {
-  const { actor, isFetching } = useActor();
-
-  const hasFilters = Object.values(filters).some((v) => v && v.trim() !== '');
-
-  return useQuery<SparePartSearchResult[]>({
-    queryKey: ['spare-parts-advanced-search', filters],
-    queryFn: async () => {
-      if (!actor) return [];
-      // Backend method: searchSparePartsAdvanced(filters: SearchFilters): async [SparePartSearchResult]
-      throw new Error('Backend method searchSparePartsAdvanced not yet implemented');
-    },
-    enabled: !!actor && !isFetching && hasFilters,
   });
 }

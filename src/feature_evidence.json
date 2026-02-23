@@ -2,29 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-create-cataloguing-module-ui-with-excel-import-interface-for-uploading-attribute-template-files-to-populate-attribute-master",
-      "featureTitle": "Create Cataloguing Module UI with Excel import interface for uploading attribute template files to populate Attribute_Master",
-      "files": [
-        "frontend/src/components/AttributeTemplateImport.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-11"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-spare-part-master-form-with-noun-and-modifier-selection-dropdowns-that-dynamically-load-related-attribute-fields-when-selections-are-made",
-      "featureTitle": "Create Spare Part Master form with noun and modifier selection dropdowns that dynamically load related attribute fields when selections are made",
+      "featureId": "feature-update-the-spare-part-master-form-to-dynamically-render-attribute-fields-based-on-the-definitions-loaded-from-the-uploaded-file",
+      "featureTitle": "Update the Spare Part Master form to dynamically render attribute fields based on the definitions loaded from the uploaded file",
       "files": [
         "frontend/src/components/SparePartMasterForm.tsx",
         "frontend/src/hooks/useQueries.ts",
@@ -40,122 +19,16 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-12"
+        "REQ-21"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-implement-spare-part-number-selection-with-autocomplete-that-allows-users-to-select-existing-spare-part-numbers-and-displays-a-message-if-the-spare-part-already-exists",
-      "featureTitle": "Implement spare part number selection with autocomplete that allows users to select existing spare part numbers and displays a message if the spare part already exists",
+      "featureId": "feature-connect-the-attributetemplateimport-component-to-use-the-uploaded-file-as-the-source-for-attribute-definitions-instead-of-relying-on-static-templates",
+      "featureTitle": "Connect the AttributeTemplateImport component to use the uploaded file as the source for attribute definitions instead of relying on static templates",
       "files": [
-        "frontend/src/components/SparePartMasterForm.tsx",
-        "frontend/src/components/SparePartNumberLookup.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-13"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-attribute-editing-interface-for-existing-spare-parts-that-loads-current-attribute-values-and-allows-modifications-without-creating-duplicates",
-      "featureTitle": "Implement attribute editing interface for existing spare parts that loads current attribute values and allows modifications without creating duplicates",
-      "files": [
-        "frontend/src/components/SparePartMasterForm.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-14"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-equipment-linking-interface-that-allows-associating-the-same-spare-part-with-multiple-equipment-records",
-      "featureTitle": "Implement equipment linking interface that allows associating the same spare part with multiple equipment records",
-      "files": [
-        "frontend/src/components/SparePartEquipmentLinks.tsx",
-        "frontend/src/components/SparePartMasterForm.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-15"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-display-auto-generated-spare-part-number-when-creating-new-spare-parts-and-show-auto-generated-short-description-based-on-entered-attribute-values",
-      "featureTitle": "Display auto-generated spare part number when creating new spare parts and show auto-generated short description based on entered attribute values",
-      "files": [
-        "frontend/src/components/SparePartMasterForm.tsx",
+        "frontend/src/components/AttributeTemplateImport.tsx",
         "frontend/src/hooks/useQueries.ts",
-        "frontend/src/lib/descriptionGenerator.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-16"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-create-advanced-search-interface-with-filter-controls-for-equipment-no-tag-no-spare-part-no-spare-name-description-model-no-part-number-and-serial-num",
-      "featureTitle": "Create advanced search interface with filter controls for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num",
-      "files": [
-        "frontend/src/components/SparePartAdvancedSearch.tsx",
-        "frontend/src/hooks/useQueries.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-17"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-replace-placeholder-cataloguingpage-tsx-with-fully-functional-spare-part-master-interface-integrating-all-noun-modifier-classification-attribute-management-and-search-capabilities",
-      "featureTitle": "Replace placeholder CataloguingPage.tsx with fully functional Spare Part Master interface integrating all noun-modifier classification, attribute management, and search capabilities",
-      "files": [
         "frontend/src/pages/CataloguingPage.tsx"
       ],
       "components": [
@@ -168,7 +41,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-18"
+        "REQ-22"
       ],
       "confidence": "high"
     }

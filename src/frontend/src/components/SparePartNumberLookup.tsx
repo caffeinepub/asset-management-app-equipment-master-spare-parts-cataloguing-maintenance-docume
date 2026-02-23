@@ -21,7 +21,7 @@ export default function SparePartNumberLookup({ value, onChange, disabled }: Spa
     const search = searchTerm.toLowerCase();
     return (
       part.partNumber.toString().includes(search) ||
-      part.shortDescription?.toLowerCase().includes(search) ||
+      part.description?.toLowerCase().includes(search) ||
       part.noun?.toLowerCase().includes(search) ||
       part.modifier?.toLowerCase().includes(search)
     );
@@ -114,8 +114,8 @@ export default function SparePartNumberLookup({ value, onChange, disabled }: Spa
               <div className="text-xs text-muted-foreground">
                 {part.noun} - {part.modifier}
               </div>
-              {part.shortDescription && (
-                <div className="text-xs text-muted-foreground truncate">{part.shortDescription}</div>
+              {part.description && (
+                <div className="text-xs text-muted-foreground truncate">{part.description}</div>
               )}
             </div>
           ))}

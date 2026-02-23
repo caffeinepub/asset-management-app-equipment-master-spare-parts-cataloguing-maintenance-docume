@@ -23,7 +23,7 @@ export const SPARE_PARTS_TEMPLATE_HEADERS = [
   'quantity',
   'supplier',
   'manufacturer',
-  'partNo',
+  'manufacturerPartNo',
   'modelSerial',
   'additionalInformation',
 ];
@@ -34,24 +34,28 @@ export function mapEquipmentRow(row: Record<string, string>) {
   const location = row.location || row.Location || '';
   const manufacturer = row.manufacturer || row.Manufacturer || '';
   const model = row.model || row.Model || '';
-  const serial = row.serialNumber || row.SerialNumber || row.serial || row.Serial || '';
+  const serialNumber = row.serialNumber || row.SerialNumber || row.serial || row.Serial || '';
   const purchaseDate = row.purchaseDate || row.PurchaseDate || '';
   const warrantyExpiry = row.warrantyExpiry || row.WarrantyExpiry || row.warranty || row.Warranty || '';
   const disciplineStr = row.discipline || row.Discipline || '';
-  const additionalInfo = row.additionalInformation || row.AdditionalInformation || row.notes || row.Notes || '';
+  const additionalInformation = row.additionalInformation || row.AdditionalInformation || row.notes || row.Notes || '';
 
   const discipline = disciplineStr ? labelToDiscipline(disciplineStr.toUpperCase()) : EngineeringDiscipline.unknown_;
 
+  // Generate equipment number (will be overridden by backend)
+  const equipmentNumber = BigInt(Date.now());
+
   return {
+    equipmentNumber,
     name,
     equipmentTagNumber,
     location,
     manufacturer,
     model,
-    serial,
-    purchase: parseDateString(purchaseDate),
-    warranty: parseDateString(warrantyExpiry),
-    additionalInfo,
+    serialNumber,
+    purchaseDate: parseDateString(purchaseDate),
+    warrantyExpiry: parseDateString(warrantyExpiry),
+    additionalInformation,
     discipline,
   };
 }
@@ -62,20 +66,23 @@ export function mapSparePartRow(row: Record<string, string>, equipmentNumber: bi
   const quantity = row.quantity || row.Quantity || '0';
   const supplier = row.supplier || row.Supplier || '';
   const manufacturer = row.manufacturer || row.Manufacturer || '';
-  const partNo = row.partNo || row.PartNo || row.partNumber || row.PartNumber || '';
+  const manufacturerPartNo = row.manufacturerPartNo || row.ManufacturerPartNo || row.partNo || row.PartNo || row.partNumber || row.PartNumber || '';
   const modelSerial = row.modelSerial || row.ModelSerial || row.model || row.Model || '';
-  const additionalInfo = row.additionalInformation || row.AdditionalInformation || row.notes || row.Notes || '';
+  const additionalInformation = row.additionalInformation || row.AdditionalInformation || row.notes || row.Notes || '';
+
+  // Generate part number (will be overridden by backend)
+  const partNumber = BigInt(Date.now());
 
   return {
-    equipmentNumber,
+    partNumber,
     name,
     description,
     quantity: parseBigInt(quantity),
     supplier,
     manufacturer,
-    partNo,
+    manufacturerPartNo,
     modelSerial,
-    attachment: null,
-    additionalInfo,
+    attachment: undefined,
+    additionalInformation,
   };
 }

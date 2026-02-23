@@ -26,6 +26,7 @@ import {
   useUpdateSparePartAttributes,
 } from '@/hooks/useQueries';
 import { generateSparePartDescription } from '@/lib/descriptionGenerator';
+import { validateAttributes } from '@/lib/validation';
 import { toast } from 'sonner';
 
 export default function SparePartMasterForm() {
@@ -35,6 +36,7 @@ export default function SparePartMasterForm() {
   const [modifier, setModifier] = useState('');
   const [attributes, setAttributes] = useState<Record<string, string>>({});
   const [autoDescription, setAutoDescription] = useState('');
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const nounsQuery = useGetNouns();
   const modifiersQuery = useGetModifiers(noun);
@@ -62,6 +64,14 @@ export default function SparePartMasterForm() {
     }
   }, [sparePartQuery.data]);
 
+  // Clear validation errors when attributes change
+  useEffect(() => {
+    if (attributesQuery.data) {
+      const validation = validateAttributes(attributes, attributesQuery.data);
+      setValidationErrors(validation.errors);
+    }
+  }, [attributes, attributesQuery.data]);
+
   const handleSparePartSelect = (partNumber: bigint | null) => {
     setSelectedPartNumber(partNumber);
     if (!partNumber) {
@@ -71,6 +81,7 @@ export default function SparePartMasterForm() {
       setModifier('');
       setAttributes({});
       setAutoDescription('');
+      setValidationErrors({});
     }
   };
 
@@ -87,6 +98,16 @@ export default function SparePartMasterForm() {
     if (!noun || !modifier) {
       toast.error('Please select both noun and modifier');
       return;
+    }
+
+    // Validate attributes
+    if (attributesQuery.data) {
+      const validation = validateAttributes(attributes, attributesQuery.data);
+      if (!validation.valid) {
+        setValidationErrors(validation.errors);
+        toast.error('Please fix validation errors before submitting');
+        return;
+      }
     }
 
     try {
@@ -119,7 +140,10 @@ export default function SparePartMasterForm() {
     setModifier('');
     setAttributes({});
     setAutoDescription('');
+    setValidationErrors({});
   };
+
+  const hasBackendSupport = nounsQuery.data && nounsQuery.data.length > 0;
 
   return (
     <div className="space-y-6">
@@ -128,7 +152,7 @@ export default function SparePartMasterForm() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Spare Part Master</CardTitle>
-              <CardDescription>Create or edit spare parts using noun-modifier classification</CardDescription>
+              <CardDescription>Create or edit spare parts using noun-modifier classification with dynamic attributes</CardDescription>
             </div>
             {mode === 'edit' ? (
               <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
@@ -144,13 +168,15 @@ export default function SparePartMasterForm() {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Backend methods required:</strong> getNouns, getModifiersForNoun, getAttributesForNounModifier,
-              getNextSparePartNumber, createSparePartWithAttributes, updateSparePartAttributes, getSparePartByNumber
-            </AlertDescription>
-          </Alert>
+          {!hasBackendSupport && (
+            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <AlertDescription className="text-amber-800 dark:text-amber-200">
+                <strong>Waiting for attribute template:</strong> Please upload an attribute template in the Import Templates tab first.
+                The form will display dynamic attributes based on the uploaded file.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Spare Part Number Lookup */}
@@ -187,9 +213,9 @@ export default function SparePartMasterForm() {
 
             {/* Noun Selection */}
             <FormField label="Noun" required>
-              <Select value={noun} onValueChange={setNoun} disabled={mode === 'edit'}>
+              <Select value={noun} onValueChange={setNoun} disabled={mode === 'edit' || !hasBackendSupport}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select noun" />
+                  <SelectValue placeholder={hasBackendSupport ? "Select noun" : "Upload template first"} />
                 </SelectTrigger>
                 <SelectContent>
                   {nounsQuery.data?.map((n) => (
@@ -219,22 +245,27 @@ export default function SparePartMasterForm() {
               </FormField>
             )}
 
-            {/* Dynamic Attributes */}
+            {/* Dynamic Attributes from Uploaded Template */}
             {noun && modifier && attributesQuery.data && attributesQuery.data.length > 0 && (
               <div className="space-y-4 border-t pt-4">
-                <h3 className="text-sm font-semibold">Attributes</h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Attributes</h3>
+                  <Badge variant="outline" className="text-xs">From Uploaded Template</Badge>
+                </div>
                 {attributesQuery.data.map((attr) => (
                   <FormField
                     key={attr.name}
                     label={attr.name}
                     required={attr.required}
                     help={attr.validationRules || undefined}
+                    error={validationErrors[attr.name]}
                   >
                     {attr.attributeType === 'textarea' ? (
                       <Textarea
                         value={attributes[attr.name] || ''}
                         onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
                         placeholder={`Enter ${attr.name.toLowerCase()}`}
+                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
                       />
                     ) : attr.attributeType === 'number' ? (
                       <Input
@@ -242,13 +273,38 @@ export default function SparePartMasterForm() {
                         value={attributes[attr.name] || ''}
                         onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
                         placeholder={`Enter ${attr.name.toLowerCase()}`}
+                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
                       />
+                    ) : attr.attributeType === 'date' ? (
+                      <Input
+                        type="date"
+                        value={attributes[attr.name] || ''}
+                        onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
+                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
+                      />
+                    ) : attr.attributeType === 'select' && attr.allowedValues ? (
+                      <Select
+                        value={attributes[attr.name] || ''}
+                        onValueChange={(value) => handleAttributeChange(attr.name, value)}
+                      >
+                        <SelectTrigger className={validationErrors[attr.name] ? 'border-destructive' : ''}>
+                          <SelectValue placeholder={`Select ${attr.name.toLowerCase()}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {attr.allowedValues.map((val) => (
+                            <SelectItem key={val} value={val}>
+                              {val}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Input
                         type="text"
                         value={attributes[attr.name] || ''}
                         onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
                         placeholder={`Enter ${attr.name.toLowerCase()}`}
+                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
                       />
                     )}
                   </FormField>
@@ -270,7 +326,7 @@ export default function SparePartMasterForm() {
             <div className="flex gap-2">
               <Button
                 type="submit"
-                disabled={!noun || !modifier || createMutation.isPending || updateMutation.isPending}
+                disabled={!noun || !modifier || !hasBackendSupport || createMutation.isPending || updateMutation.isPending}
               >
                 <Save className="h-4 w-4 mr-2" />
                 {mode === 'create' ? 'Create Spare Part' : 'Update Attributes'}

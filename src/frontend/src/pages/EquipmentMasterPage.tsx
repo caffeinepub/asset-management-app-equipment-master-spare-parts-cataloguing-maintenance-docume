@@ -62,20 +62,21 @@ export default function EquipmentMasterPage() {
 
     createEquipment.mutate(
       {
+        equipmentNumber: nextEquipmentNumber || BigInt(1),
         name: formData.name,
         equipmentTagNumber: formData.equipmentTagNumber,
         location: formData.location,
         manufacturer: formData.manufacturer,
         model: formData.model,
-        serial: formData.serialNumber,
-        purchase: BigInt(purchaseTime),
-        warranty: BigInt(warrantyTime),
-        additionalInfo: formData.additionalInformation,
+        serialNumber: formData.serialNumber,
+        purchaseDate: BigInt(purchaseTime),
+        warrantyExpiry: BigInt(warrantyTime),
+        additionalInformation: formData.additionalInformation,
         discipline: formData.discipline,
       },
       {
-        onSuccess: (equipmentNumber) => {
-          toast.success(`Equipment created successfully with Equipment # ${equipmentNumber.toString()}`);
+        onSuccess: () => {
+          toast.success(`Equipment created successfully with Equipment # ${nextEquipmentNumber?.toString()}`);
           setFormData({
             name: '',
             equipmentTagNumber: '',

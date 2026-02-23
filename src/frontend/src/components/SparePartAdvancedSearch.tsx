@@ -167,7 +167,7 @@ export default function SparePartAdvancedSearch() {
                       </TableCell>
                       <TableCell>{result.noun}</TableCell>
                       <TableCell>{result.modifier}</TableCell>
-                      <TableCell className="max-w-xs truncate">{result.shortDescription}</TableCell>
+                      <TableCell className="max-w-xs truncate">{result.description}</TableCell>
                       <TableCell>
                         {result.equipmentList && result.equipmentList.length > 0 ? (
                           <div className="flex flex-wrap gap-1">

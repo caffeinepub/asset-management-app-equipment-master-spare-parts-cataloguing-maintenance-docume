@@ -39,7 +39,7 @@ export default function CataloguingPage() {
         <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         <AlertDescription className="text-amber-800 dark:text-amber-200">
           <strong>Backend Update Required:</strong> The cataloguing module requires additional backend methods for attribute management, 
-          noun-modifier classification, and advanced search. The UI is ready but backend implementation is pending.
+          noun-modifier classification, and advanced search. Upload an attribute template in the Import Templates tab to define the dynamic attributes.
         </AlertDescription>
       </Alert>
 

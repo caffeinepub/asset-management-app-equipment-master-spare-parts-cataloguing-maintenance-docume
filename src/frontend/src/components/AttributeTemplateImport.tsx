@@ -27,6 +27,11 @@ export default function AttributeTemplateImport() {
       return;
     }
 
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size exceeds 10 MB limit');
+      return;
+    }
+
     setSelectedFile(file);
     setUploadProgress(0);
   };
@@ -59,9 +64,10 @@ export default function AttributeTemplateImport() {
         setUploadProgress(percentage);
       });
 
-      await importMutation.mutateAsync(blob);
+      const result = await importMutation.mutateAsync(blob);
       
-      toast.success('Attribute template imported successfully');
+      const attributeCount = (result as any)?.attributeCount || 0;
+      toast.success(`Attribute template imported successfully! ${attributeCount} attributes loaded.`);
       setSelectedFile(null);
       setUploadProgress(0);
     } catch (error: any) {
@@ -87,9 +93,8 @@ export default function AttributeTemplateImport() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Backend method required:</strong> importAttributeTemplateFromExcel(excelBlob: ExternalBlob)
-            <br />
-            Expected Excel format: Columns for Noun, Modifier, Attribute Name, Attribute Type, Validation Rules, Required
+            <strong>Expected Excel format:</strong> Columns for Noun, Modifier, Attribute Name, Attribute Type, Validation Rules, Required.
+            The uploaded file will define the dynamic attributes shown in the Spare Part Master form.
           </AlertDescription>
         </Alert>
 
@@ -147,7 +152,7 @@ export default function AttributeTemplateImport() {
                 <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
                   <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                   <AlertDescription className="text-green-800 dark:text-green-200">
-                    Template imported successfully
+                    Template imported successfully! The Spare Part Master form will now use the uploaded attributes.
                   </AlertDescription>
                 </Alert>
               )}
@@ -179,6 +184,7 @@ export default function AttributeTemplateImport() {
         <div className="text-xs text-muted-foreground space-y-1">
           <p><strong>Supported formats:</strong> .xls, .xlsx, .ods</p>
           <p><strong>Maximum file size:</strong> 10 MB</p>
+          <p><strong>Note:</strong> After importing, switch to the Spare Part Master tab to see the dynamic attributes.</p>
         </div>
       </CardContent>
     </Card>

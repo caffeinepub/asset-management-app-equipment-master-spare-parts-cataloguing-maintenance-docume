@@ -90,10 +90,10 @@ export default function EquipmentListPage() {
         location: editingEquipment.location,
         manufacturer: editingEquipment.manufacturer,
         model: editingEquipment.model,
-        serial: editingEquipment.serialNumber,
-        purchase: editingEquipment.purchaseDate,
-        warranty: editingEquipment.warrantyExpiry,
-        additionalInfo: editingEquipment.additionalInformation,
+        serialNumber: editingEquipment.serialNumber,
+        purchaseDate: editingEquipment.purchaseDate,
+        warrantyExpiry: editingEquipment.warrantyExpiry,
+        additionalInformation: editingEquipment.additionalInformation,
         discipline: editingEquipment.discipline,
       });
       toast.success('Equipment updated successfully');
