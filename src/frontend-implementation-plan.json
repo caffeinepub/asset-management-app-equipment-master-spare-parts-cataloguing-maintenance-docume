@@ -1,37 +1,198 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix equipment list undefined error in replace call",
+  "title": "Implement Spare Part Master Frontend with Noun-Modifier Classification in Cataloguing Module",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
+      "id": "REQ-11",
+      "summary": "Create Excel import interface for attribute template upload in Cataloguing Module",
       "acceptanceCriteria": [
-        "Equipment list page loads without crashing",
-        "All string operations on equipment fields are protected with null/undefined checks",
-        "Equipment with missing or null fields display gracefully without errors"
+        "UI provides file upload control accepting Excel files",
+        "Shows upload progress and validation feedback",
+        "Displays success or error messages after import completion"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/EquipmentListPage.tsx",
+          "path": "frontend/src/components/AttributeTemplateImport.tsx",
+          "operation": "create",
+          "description": "Create a reusable component for Excel file upload with drag-and-drop support, file validation (Excel formats only), and upload progress tracking. Use the blob-storage component's ExternalBlob.fromBytes() with withUploadProgress() to track upload percentage. Display file name, size, and upload status. Verify the blob-storage component's usage instructions before implementing. Show success/error toast notifications after upload completes using existing toast patterns from the codebase."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Add defensive null/undefined checks before all replace() method calls and other string operations on equipment fields. Wrap string method calls with optional chaining (?.) or explicit null checks. Ensure that fields like name, model, manufacturer, serialNumber, location, equipmentTagNumber, and any other text fields used in search, filter, or display logic are validated before string methods are invoked. Provide fallback empty strings or default values when fields are null/undefined to prevent runtime errors."
+          "description": "Add React Query mutation hook useImportAttributeTemplate that calls backend capability to import Excel attribute templates. Include mutation options for success/error callbacks, invalidate relevant queries on success, and handle loading states. Follow existing mutation patterns in the file for consistency."
         }
       ]
     },
     {
-      "id": "REQ-2",
-      "summary": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
+      "id": "REQ-12",
+      "summary": "Create Spare Part Master form with dynamic noun-modifier attribute loading",
       "acceptanceCriteria": [
-        "Equipment fields are validated before string methods are called",
-        "Empty or null values are handled with fallback display values",
-        "No runtime errors occur when equipment records have incomplete data"
+        "Form displays noun dropdown populated from available nouns",
+        "Form displays modifier dropdown populated based on selected noun",
+        "Attribute fields appear dynamically after noun and modifier selection",
+        "Attribute fields match the types and validation rules from Attribute_Master"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/EquipmentListPage.tsx",
+          "path": "frontend/src/components/SparePartMasterForm.tsx",
+          "operation": "create",
+          "description": "Create the main Spare Part Master form component with noun and modifier selection dropdowns that trigger dynamic attribute field loading. Use the existing FormField component from frontend/src/components/forms/FormField.tsx for consistent styling. Implement controlled form state with React hooks. When noun is selected, fetch available modifiers for that noun. When both noun and modifier are selected, fetch the related attributes dynamically and render appropriate input fields based on attribute types (text, number, date, etc.). Include validation for required fields and apply attribute-specific validation rules. Display clear loading states while fetching attributes. Use Shadcn Select components for dropdowns."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
           "operation": "modify",
-          "description": "Review all locations where equipment fields are accessed and used in string operations, particularly in search/filter logic, table rendering, and inline editing. Add null coalescing operators (??) to provide fallback values (empty strings or placeholders like 'N/A') for display. Ensure that any toLowerCase(), includes(), replace(), or other string prototype methods are only called on verified non-null strings. Update the filtering and search logic to gracefully handle equipment records with incomplete or missing field data."
+          "description": "Add React Query hooks: useGetNouns to fetch available nouns, useGetModifiers(noun) to fetch modifiers for a selected noun, and useGetAttributesForNounModifier(noun, modifier) to fetch dynamic attributes. Include proper enabled conditions to prevent premature fetching. Follow existing query patterns in the file."
+        },
+        {
+          "path": "frontend/src/lib/validation.ts",
+          "operation": "modify",
+          "description": "Add validation functions for dynamic attribute fields including validateAttributeValue(value, attributeType, validationRules) that handles different attribute types and applies backend-provided validation rules. Return error messages or null following existing validation patterns."
+        }
+      ]
+    },
+    {
+      "id": "REQ-13",
+      "summary": "Implement spare part number autocomplete with existence checking",
+      "acceptanceCriteria": [
+        "Spare part number field provides autocomplete from existing spare parts",
+        "When existing spare part is selected, form populates with its current attributes",
+        "Clear indication is shown when user selects an existing vs. new spare part"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/SparePartNumberLookup.tsx",
+          "operation": "create",
+          "description": "Create an autocomplete component for spare part number selection similar to frontend/src/components/EquipmentLookup.tsx but for spare parts. Use the existing AutocompleteTextInput component from frontend/src/components/AutocompleteTextInput.tsx as the base. Filter spare parts by part number, name, or description. Display part number, name, and brief description in suggestions. Emit selected spare part data to parent component. Include clear visual indication (badge or label) when an existing spare part is selected vs. creating a new one."
+        },
+        {
+          "path": "frontend/src/components/SparePartMasterForm.tsx",
+          "operation": "modify",
+          "description": "Integrate SparePartNumberLookup component into the form. When a user selects an existing spare part, fetch and populate all its current attributes, noun, and modifier values into the form fields. Display a prominent indicator (e.g., colored badge or alert) showing 'Editing Existing Spare Part' vs. 'Creating New Spare Part'. Disable noun and modifier fields when editing existing parts to prevent classification changes. Clear all fields when switching between new and existing spare parts."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query hook useGetSparePartByNumber(partNumber) that fetches a spare part's details including all attributes by part number. Include enabled condition to only fetch when partNumber is provided. Return null if spare part doesn't exist."
+        }
+      ]
+    },
+    {
+      "id": "REQ-14",
+      "summary": "Implement attribute editing for existing spare parts with duplicate prevention",
+      "acceptanceCriteria": [
+        "Form loads and displays existing attribute values when spare part exists",
+        "Save operation updates existing spare part attributes",
+        "Form prevents saving with duplicate spare part numbers",
+        "Clear error message displays when attempting to create duplicate"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/SparePartMasterForm.tsx",
+          "operation": "modify",
+          "description": "Add logic to handle both create and update modes. When editing an existing spare part (determined by whether a spare part was selected via SparePartNumberLookup), populate all form fields with current values including all dynamic attributes. On save, check the form mode and call the appropriate backend capability (create vs. update). Implement client-side duplicate check before submission by querying existing spare part numbers. Display clear error toast if attempting to create a duplicate using the existing toast patterns. Show success toast on successful save/update. Reset form state after successful operation."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query mutations: useCreateSparePartWithAttributes for creating new spare parts with attributes, and useUpdateSparePartAttributes for updating existing spare part attributes. Both should invalidate spare parts queries on success. Add useCheckSparePartExists(partNumber) query for client-side duplicate validation before submission."
+        }
+      ]
+    },
+    {
+      "id": "REQ-15",
+      "summary": "Implement equipment linking interface for associating spare parts with multiple equipment",
+      "acceptanceCriteria": [
+        "UI provides equipment selection control for linking spare parts",
+        "Users can add multiple equipment associations to one spare part",
+        "List of linked equipment is visible when viewing spare part details",
+        "Users can remove equipment associations without deleting the spare part"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/SparePartEquipmentLinks.tsx",
+          "operation": "create",
+          "description": "Create a component for managing equipment associations with a spare part. Use the existing EquipmentLookup component from frontend/src/components/EquipmentLookup.tsx for equipment selection. Display a list of currently linked equipment with equipment number, tag number, and name. Include a button to add new equipment links and delete buttons to remove existing links. Show confirmation dialog using frontend/src/components/ConfirmDialog.tsx before removing links. Handle loading and error states appropriately. Display empty state message when no equipment is linked."
+        },
+        {
+          "path": "frontend/src/components/SparePartMasterForm.tsx",
+          "operation": "modify",
+          "description": "Integrate SparePartEquipmentLinks component into the form, displayed after spare part basic details. Only show the equipment links section when editing an existing spare part or after a new spare part is successfully created. Pass the spare part number to SparePartEquipmentLinks component. Update the form layout to accommodate the equipment links section."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query hooks: useGetEquipmentForSparePart(partNumber) to fetch all equipment linked to a spare part, useLinkSparePartToEquipment mutation to create associations, and useUnlinkSparePartFromEquipment mutation to remove associations. Mutations should invalidate relevant queries on success including equipment and spare parts queries."
+        }
+      ]
+    },
+    {
+      "id": "REQ-16",
+      "summary": "Display auto-generated spare part number and short description",
+      "acceptanceCriteria": [
+        "New spare part number is displayed automatically when form indicates new spare part",
+        "Short description field updates automatically as attributes are filled in",
+        "Auto-generated values are clearly labeled as system-generated"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/SparePartMasterForm.tsx",
+          "operation": "modify",
+          "description": "Add read-only display fields for auto-generated spare part number and short description. For new spare parts (not editing existing), fetch and display the next available spare part number from backend when the form loads. Implement a React effect that watches attribute field changes and automatically generates a short description by concatenating key attribute values (e.g., noun, modifier, primary attributes). Display both fields with a subtle badge or label indicating '(Auto-generated)' or '(System Generated)'. Style these fields to visually distinguish them from editable fields using muted background or border styling. Update the description in real-time as users fill in attributes."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query hook useGetNextSparePartNumber that fetches the next available auto-generated spare part number from the backend. Use this query when the form is in 'create new' mode. Include proper enabled conditions."
+        },
+        {
+          "path": "frontend/src/lib/descriptionGenerator.ts",
+          "operation": "create",
+          "description": "Create utility functions to generate short descriptions from spare part attributes. Export generateSparePartDescription(noun, modifier, attributes) that concatenates key attribute values into a readable description string (e.g., 'Valve - Ball - 2 inch - Stainless Steel'). Handle missing or empty attributes gracefully. Keep descriptions concise and meaningful."
+        }
+      ]
+    },
+    {
+      "id": "REQ-17",
+      "summary": "Create advanced search interface with multiple filter criteria",
+      "acceptanceCriteria": [
+        "Search interface displays input fields for all specified filter criteria",
+        "Filters can be applied individually or in combination",
+        "Search results update dynamically as filters are applied",
+        "Results display spare parts with their associated equipment and attributes"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/SparePartAdvancedSearch.tsx",
+          "operation": "create",
+          "description": "Create an advanced search interface component with input fields for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num. Use the existing FormField component for consistent styling. Implement debounced search using the useDebounce hook from frontend/src/hooks/useDebounce.ts to avoid excessive backend calls. Display search results in a table or card layout showing spare part details along with associated equipment information. Include clear/reset filters button. Show loading spinner during search. Display empty state message when no results found. Allow clicking on results to open detailed view or edit form."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add React Query hook useSearchSparePartsAdvanced that accepts filter parameters (equipmentNo, tagNo, sparePartNo, spareName, description, modelNo, partNumber, serialNum) and calls the backend search capability. Include enabled condition to only search when at least one filter is provided. Use keepPreviousData option to prevent UI flicker during searches."
+        }
+      ]
+    },
+    {
+      "id": "REQ-18",
+      "summary": "Replace placeholder CataloguingPage.tsx with fully functional Spare Part Master interface",
+      "acceptanceCriteria": [
+        "CataloguingPage.tsx implements complete Spare Part Master functionality",
+        "Page includes tabs or sections for import, create/edit, and search",
+        "All backend queries use proper error handling and loading states",
+        "Navigation integrates with existing PageLayout and authentication"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/CataloguingPage.tsx",
+          "operation": "modify",
+          "description": "Replace the placeholder content with a fully functional Spare Part Master page. Use the existing PageLayout component from frontend/src/components/PageLayout.tsx for consistent header and navigation. Implement a tabbed interface using Shadcn Tabs component with three tabs: 'Import Templates' (containing AttributeTemplateImport), 'Spare Part Master' (containing SparePartMasterForm), and 'Advanced Search' (containing SparePartAdvancedSearch). Add authentication check using the useInternetIdentity hook and display an alert if user is not authenticated, similar to frontend/src/pages/GlobalSearchPage.tsx. Include proper error boundaries and loading states for all data fetching operations. Show toast notifications for user actions using existing toast patterns. Ensure all components are properly wired together with state management and data flow."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Verify that the cataloguing route is properly configured in the router and that navigation to the Cataloguing page works correctly. The route should already exist based on the file summaries, but confirm it's accessible from the main navigation."
         }
       ]
     }

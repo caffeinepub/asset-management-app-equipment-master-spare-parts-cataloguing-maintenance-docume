@@ -1,45 +1,214 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-23T00:46:06.217Z",
+  "generatedAt": "2026-02-23T01:27:29.963Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 18,
+    "implemented": 8,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
+        "summary": "Create backend data structures for Attribute_Master table to store attribute templates imported from Excel files, including fields for noun, modifier, attribute name, attribute type, and validation rules",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-10",
+        "summary": "Implement backend search method supporting advanced filters for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-11",
+        "summary": "Create Cataloguing Module UI with Excel import interface for uploading attribute template files to populate Attribute_Master",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
+          "frontend/src/components/AttributeTemplateImport.tsx",
+          "frontend/src/hooks/useQueries.ts"
         ],
         "matchedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
+          "frontend/src/components/AttributeTemplateImport.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-12",
+        "summary": "Create Spare Part Master form with noun and modifier selection dropdowns that dynamically load related attribute fields when selections are made",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/lib/validation.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/lib/validation.ts"
+        ]
+      },
+      {
+        "id": "REQ-13",
+        "summary": "Implement spare part number selection with autocomplete that allows users to select existing spare part numbers and displays a message if the spare part already exists",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartNumberLookup.tsx",
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartNumberLookup.tsx",
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-14",
+        "summary": "Implement attribute editing interface for existing spare parts that loads current attribute values and allows modifications without creating duplicates",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-15",
+        "summary": "Implement equipment linking interface that allows associating the same spare part with multiple equipment records",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartEquipmentLinks.tsx",
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartEquipmentLinks.tsx",
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-16",
+        "summary": "Display auto-generated spare part number when creating new spare parts and show auto-generated short description based on entered attribute values",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/lib/descriptionGenerator.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartMasterForm.tsx",
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/lib/descriptionGenerator.ts"
+        ]
+      },
+      {
+        "id": "REQ-17",
+        "summary": "Create advanced search interface with filter controls for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/SparePartAdvancedSearch.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/SparePartAdvancedSearch.tsx",
+          "frontend/src/hooks/useQueries.ts"
+        ]
+      },
+      {
+        "id": "REQ-18",
+        "summary": "Replace placeholder CataloguingPage.tsx with fully functional Spare Part Master interface integrating all noun-modifier classification, attribute management, and search capabilities",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/pages/CataloguingPage.tsx",
+          "frontend/src/App.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/pages/CataloguingPage.tsx"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/EquipmentListPage.tsx"
-        ]
+        "summary": "Create backend data structures for Spare_Part_Attributes table to store all attributes for spare parts, supporting dynamic attributes based on noun-modifier classification",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Implement backend method to import Excel file containing attribute templates and populate Attribute_Master table with noun, modifier, and attribute definitions",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Implement backend method to retrieve attributes dynamically based on selected noun and modifier values from Attribute_Master",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Implement backend method to check if a spare part number already exists and return its current attributes if found",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Implement backend logic to prevent duplicate spare part creation by validating spare part number uniqueness before creation",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-7",
+        "summary": "Implement backend logic to allow linking the same spare part to multiple equipment records without duplicating the spare part itself",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-8",
+        "summary": "Implement backend method to auto-generate unique spare part numbers when creating new spare parts",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-9",
+        "summary": "Implement backend logic to auto-generate short descriptions for spare parts based on their attribute values from Spare_Part_Attributes table",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/pages/EquipmentListPage.tsx",
+    "frontend/src/components/AttributeTemplateImport.tsx",
+    "frontend/src/components/SparePartAdvancedSearch.tsx",
+    "frontend/src/components/SparePartEquipmentLinks.tsx",
+    "frontend/src/components/SparePartMasterForm.tsx",
+    "frontend/src/components/SparePartNumberLookup.tsx",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/lib/descriptionGenerator.ts",
+    "frontend/src/lib/validation.ts",
+    "frontend/src/pages/CataloguingPage.tsx",
+    "frontend/src/pages/ReportsPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

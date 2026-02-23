@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import {
 import { exportToCSV, exportToPDF } from '@/lib/exports';
 import { formatDate } from '@/lib/dates';
 import { ArrowLeft, FileSpreadsheet, FileText } from 'lucide-react';
+import type { MaintenanceRecord } from '@/backend';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -21,7 +22,19 @@ export default function ReportsPage() {
 
   const { data: equipmentList } = useGetEquipmentList();
   const { data: spareParts } = useGetSparePartsByEquipment(selectedEquipment);
-  const { data: maintenanceDue } = useGetMaintenanceDueReport();
+  const { data: maintenanceDueData } = useGetMaintenanceDueReport();
+
+  // Flatten maintenance records from all equipment
+  const maintenanceDue = useMemo(() => {
+    if (!maintenanceDueData) return [];
+    const allRecords: MaintenanceRecord[] = [];
+    maintenanceDueData.forEach((item) => {
+      item.maintenanceRecords.forEach((record) => {
+        allRecords.push(record);
+      });
+    });
+    return allRecords;
+  }, [maintenanceDueData]);
 
   const handleExportEquipmentCSV = () => {
     if (!equipmentList) return;
@@ -325,9 +338,7 @@ export default function ReportsPage() {
                   </Table>
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  No maintenance records found.
-                </div>
+                <div className="text-center py-8 text-muted-foreground">No maintenance records found.</div>
               )}
             </CardContent>
           </Card>

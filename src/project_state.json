@@ -1,32 +1,207 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "New project",
-  "architectural_notes": [],
-  "known_issues": [
-    "Error in equipment list: Cannot read properties of undefined (reading 'replace')"
+  "summary": "Cataloguing Module with Spare Part Master using Noun-Modifier classification",
+  "architectural_notes": [
+    "Noun-Modifier classification system for spare parts",
+    "Attribute_Master table for storing imported Excel templates",
+    "Spare_Part_Attributes table for storing spare part attribute values",
+    "Dynamic attribute loading based on classification selection",
+    "Auto-generation logic for spare part numbers and descriptions"
   ],
-  "isFixRequest": true,
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-fix-the-cannot-read-properties-of-undefined-reading-replace-error-occurring-in-the-equipment-list-view-by-adding-null-undefined-checks-before-any-replace-method-calls-on-equipment-data-fields",
-      "title": "Fix the 'Cannot read properties of undefined (reading 'replace')' error occurring in the equipment list view by adding null/undefined checks before any replace() method calls on equipment data fields",
+      "id": "feature-create-cataloguing-module-ui-with-excel-import-interface-for-uploading-attribute-template-files-to-populate-attribute-master",
+      "title": "Create Cataloguing Module UI with Excel import interface for uploading attribute template files to populate Attribute_Master",
       "reqIds": [
-        "REQ-1"
+        "REQ-11"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-defensive-null-undefined-handling-in-equipmentlistpage-tsx-for-all-equipment-fields-that-may-be-used-in-string-operations-particularly-focusing-on-fields-passed-to-search-filter-or-display-logic",
-      "title": "Add defensive null/undefined handling in EquipmentListPage.tsx for all equipment fields that may be used in string operations, particularly focusing on fields passed to search, filter, or display logic",
+      "id": "feature-create-spare-part-master-form-with-noun-and-modifier-selection-dropdowns-that-dynamically-load-related-attribute-fields-when-selections-are-made",
+      "title": "Create Spare Part Master form with noun and modifier selection dropdowns that dynamically load related attribute fields when selections are made",
       "reqIds": [
-        "REQ-2"
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-spare-part-number-selection-with-autocomplete-that-allows-users-to-select-existing-spare-part-numbers-and-displays-a-message-if-the-spare-part-already-exists",
+      "title": "Implement spare part number selection with autocomplete that allows users to select existing spare part numbers and displays a message if the spare part already exists",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-attribute-editing-interface-for-existing-spare-parts-that-loads-current-attribute-values-and-allows-modifications-without-creating-duplicates",
+      "title": "Implement attribute editing interface for existing spare parts that loads current attribute values and allows modifications without creating duplicates",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-equipment-linking-interface-that-allows-associating-the-same-spare-part-with-multiple-equipment-records",
+      "title": "Implement equipment linking interface that allows associating the same spare part with multiple equipment records",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-display-auto-generated-spare-part-number-when-creating-new-spare-parts-and-show-auto-generated-short-description-based-on-entered-attribute-values",
+      "title": "Display auto-generated spare part number when creating new spare parts and show auto-generated short description based on entered attribute values",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-advanced-search-interface-with-filter-controls-for-equipment-no-tag-no-spare-part-no-spare-name-description-model-no-part-number-and-serial-num",
+      "title": "Create advanced search interface with filter controls for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-replace-placeholder-cataloguingpage-tsx-with-fully-functional-spare-part-master-interface-integrating-all-noun-modifier-classification-attribute-management-and-search-capabilities",
+      "title": "Replace placeholder CataloguingPage.tsx with fully functional Spare Part Master interface integrating all noun-modifier classification, attribute management, and search capabilities",
+      "reqIds": [
+        "REQ-18"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "Fix equipment list undefined error in replace call",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Implement Spare Part Master with Noun-Modifier classification system",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Import attribute template from Excel and store in Attribute_Master table",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Dynamic attribute loading based on Noun and Modifier selection",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Spare part selection with edit capability and duplicate prevention",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Auto-generate spare part numbers and store attributes in Spare_Part_Attributes table",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Auto-generate short description based on attribute values",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Advanced search filters for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, Serial Num",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Create backend data structures for Attribute_Master table to store attribute templates imported from Excel files, including fields for noun, modifier, attribute name, attribute type, and validation rules",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Create backend data structures for Spare_Part_Attributes table to store all attributes for spare parts, supporting dynamic attributes based on noun-modifier classification",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Implement backend method to import Excel file containing attribute templates and populate Attribute_Master table with noun, modifier, and attribute definitions",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Implement backend method to retrieve attributes dynamically based on selected noun and modifier values from Attribute_Master",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Implement backend method to check if a spare part number already exists and return its current attributes if found",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Implement backend logic to prevent duplicate spare part creation by validating spare part number uniqueness before creation",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Implement backend logic to allow linking the same spare part to multiple equipment records without duplicating the spare part itself",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Implement backend method to auto-generate unique spare part numbers when creating new spare parts",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Implement backend logic to auto-generate short descriptions for spare parts based on their attribute values from Spare_Part_Attributes table",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Implement backend search method supporting advanced filters for Equipment No, Tag No, Spare Part No, Spare Name, Description, Model No, Part Number, and Serial Num",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Equipment Master",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

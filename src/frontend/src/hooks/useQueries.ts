@@ -119,7 +119,7 @@ export function useCreateEquipment() {
         discipline: data.discipline,
       };
       
-      const result = await actor.updateEquipment(equipment);
+      const result = await actor.createEquipment(equipment);
       return result;
     },
     onSuccess: () => {
@@ -323,8 +323,15 @@ export function useCreateSparePart() {
         additionalInformation: data.additionalInfo,
       };
       
-      const success = await actor.addOrUpdateSparePart(sparePart, data.equipmentNumber);
-      return success ? nextPartNumber : null;
+      const success = await actor.createSparePart(sparePart);
+      if (!success) {
+        throw new Error('Failed to create spare part');
+      }
+      
+      // Now link it to the equipment
+      await actor.addOrUpdateSparePart(sparePart, data.equipmentNumber);
+      
+      return nextPartNumber;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
@@ -549,12 +556,11 @@ export function useUpdateMaintenanceRecord() {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['maintenance', variables.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['maintenance-due-report'] });
     },
   });
 }
 
-// Document queries
+// Documents queries
 export function useGetDocuments(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
@@ -573,9 +579,9 @@ export function useDeleteDocument() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ equipmentNumber, docId }: { equipmentNumber: bigint; docId: bigint }) => {
+    mutationFn: async (data: { equipmentNumber: bigint; docId: bigint }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.deleteDocument(equipmentNumber, docId);
+      return actor.deleteDocument(data.equipmentNumber, data.docId);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['documents', variables.equipmentNumber.toString()] });
@@ -583,12 +589,12 @@ export function useDeleteDocument() {
   });
 }
 
-// Report queries
-export function useGetEquipmentReport() {
+// Reports queries
+export function useGetEquipmentListReport() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Equipment[]>({
-    queryKey: ['equipment-report'],
+    queryKey: ['equipment-list-report'],
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllEquipment();
@@ -597,7 +603,7 @@ export function useGetEquipmentReport() {
   });
 }
 
-export function useGetSparePartsReport() {
+export function useGetSparePartsByEquipmentReport() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Array<{ equipment: Equipment; spareParts: SparePart[] }>>({
@@ -622,21 +628,273 @@ export function useGetSparePartsReport() {
 export function useGetMaintenanceDueReport() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<MaintenanceRecord[]>({
+  return useQuery<Array<{ equipment: Equipment; maintenanceRecords: MaintenanceRecord[] }>>({
     queryKey: ['maintenance-due-report'],
     queryFn: async () => {
       if (!actor) return [];
       
       const allEquipment = await actor.getAllEquipment();
-      const allRecords: MaintenanceRecord[] = [];
+      const results = await Promise.all(
+        allEquipment.map(async (equipment) => {
+          const maintenanceRecords = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
+          return { equipment, maintenanceRecords };
+        })
+      );
       
-      for (const equipment of allEquipment) {
-        const records = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
-        allRecords.push(...records);
-      }
-      
-      return allRecords;
+      return results;
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+// ============================================
+// NEW CATALOGUING MODULE QUERIES (Backend Pending)
+// ============================================
+
+// Attribute Template Import
+export function useImportAttributeTemplate() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (excelBlob: ExternalBlob) => {
+      if (!actor) throw new Error('Actor not initialized');
+      // Backend method: importAttributeTemplateFromExcel(excelBlob: ExternalBlob): async Bool
+      throw new Error('Backend method importAttributeTemplateFromExcel not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['nouns'] });
+      queryClient.invalidateQueries({ queryKey: ['modifiers'] });
+      queryClient.invalidateQueries({ queryKey: ['attributes'] });
+    },
+  });
+}
+
+// Noun-Modifier Queries
+export function useGetNouns() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['nouns'],
+    queryFn: async () => {
+      if (!actor) return [];
+      // Backend method: getNouns(): async [Text]
+      throw new Error('Backend method getNouns not yet implemented');
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetModifiers(noun: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string[]>({
+    queryKey: ['modifiers', noun],
+    queryFn: async () => {
+      if (!actor || !noun) return [];
+      // Backend method: getModifiersForNoun(noun: Text): async [Text]
+      throw new Error('Backend method getModifiersForNoun not yet implemented');
+    },
+    enabled: !!actor && !isFetching && !!noun,
+  });
+}
+
+export interface AttributeDefinition {
+  name: string;
+  attributeType: string;
+  validationRules?: string;
+  required: boolean;
+}
+
+export function useGetAttributesForNounModifier(noun: string, modifier: string) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<AttributeDefinition[]>({
+    queryKey: ['attributes', noun, modifier],
+    queryFn: async () => {
+      if (!actor || !noun || !modifier) return [];
+      // Backend method: getAttributesForNounModifier(noun: Text, modifier: Text): async [AttributeDefinition]
+      throw new Error('Backend method getAttributesForNounModifier not yet implemented');
+    },
+    enabled: !!actor && !isFetching && !!noun && !!modifier,
+  });
+}
+
+// Spare Part Master Queries
+export function useGetNextSparePartNumber() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<bigint>({
+    queryKey: ['next-spare-part-number'],
+    queryFn: async () => {
+      if (!actor) return BigInt(1);
+      // Backend method: getNextSparePartNumber(): async Nat
+      throw new Error('Backend method getNextSparePartNumber not yet implemented');
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export interface SparePartWithAttributes {
+  partNumber: bigint;
+  noun: string;
+  modifier: string;
+  attributes: Record<string, string>;
+  shortDescription: string;
+}
+
+export function useGetSparePartByNumber(partNumber: bigint | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePartWithAttributes | null>({
+    queryKey: ['spare-part-with-attributes', partNumber?.toString()],
+    queryFn: async () => {
+      if (!actor || !partNumber) return null;
+      // Backend method: getSparePartByNumber(partNumber: Nat): async ?SparePartWithAttributes
+      throw new Error('Backend method getSparePartByNumber not yet implemented');
+    },
+    enabled: !!actor && !isFetching && partNumber !== null,
+  });
+}
+
+export function useGetAllSparePartsWithAttributes() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<SparePartWithAttributes[]>({
+    queryKey: ['all-spare-parts-with-attributes'],
+    queryFn: async () => {
+      if (!actor) return [];
+      // Backend method: getAllSparePartsWithAttributes(): async [SparePartWithAttributes]
+      throw new Error('Backend method getAllSparePartsWithAttributes not yet implemented');
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useCreateSparePartWithAttributes() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      noun: string;
+      modifier: string;
+      attributes: Array<[string, string]>;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      // Backend method: createSparePartWithAttributes(noun: Text, modifier: Text, attributes: [(Text, Text)]): async Nat
+      throw new Error('Backend method createSparePartWithAttributes not yet implemented');
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-spare-parts-with-attributes'] });
+      queryClient.invalidateQueries({ queryKey: ['next-spare-part-number'] });
+      queryClient.invalidateQueries({ queryKey: ['spare-parts-advanced-search'] });
+    },
+  });
+}
+
+export function useUpdateSparePartAttributes() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      partNumber: bigint;
+      attributes: Array<[string, string]>;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      // Backend method: updateSparePartAttributes(partNumber: Nat, attributes: [(Text, Text)]): async Bool
+      throw new Error('Backend method updateSparePartAttributes not yet implemented');
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['spare-part-with-attributes', variables.partNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['all-spare-parts-with-attributes'] });
+      queryClient.invalidateQueries({ queryKey: ['spare-parts-advanced-search'] });
+    },
+  });
+}
+
+// Equipment-Spare Part Linking
+export function useGetEquipmentForSparePart(partNumber: bigint | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<Equipment[]>({
+    queryKey: ['equipment-for-spare-part', partNumber?.toString()],
+    queryFn: async () => {
+      if (!actor || !partNumber) return [];
+      // Backend method: getEquipmentForSparePart(partNumber: Nat): async [Equipment]
+      throw new Error('Backend method getEquipmentForSparePart not yet implemented');
+    },
+    enabled: !!actor && !isFetching && partNumber !== null,
+  });
+}
+
+export function useLinkSparePartToEquipment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      partNumber: bigint;
+      equipmentNumber: bigint;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      // Backend method: linkSparePartToEquipment(partNumber: Nat, equipmentNumber: Nat): async Bool
+      throw new Error('Backend method linkSparePartToEquipment not yet implemented');
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-for-spare-part', variables.partNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+    },
+  });
+}
+
+export function useUnlinkSparePartFromEquipment() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      partNumber: bigint;
+      equipmentNumber: bigint;
+    }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      // Backend method: unlinkSparePartFromEquipment(partNumber: Nat, equipmentNumber: Nat): async Bool
+      throw new Error('Backend method unlinkSparePartFromEquipment not yet implemented');
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['equipment-for-spare-part', variables.partNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['spare-parts', variables.equipmentNumber.toString()] });
+    },
+  });
+}
+
+// Advanced Search
+export interface SparePartSearchResult extends SparePartWithAttributes {
+  equipmentList: Equipment[];
+}
+
+export function useSearchSparePartsAdvanced(filters: {
+  equipmentNo?: string;
+  tagNo?: string;
+  sparePartNo?: string;
+  spareName?: string;
+  description?: string;
+  modelNo?: string;
+  partNumber?: string;
+  serialNum?: string;
+}) {
+  const { actor, isFetching } = useActor();
+
+  const hasFilters = Object.values(filters).some((v) => v && v.trim() !== '');
+
+  return useQuery<SparePartSearchResult[]>({
+    queryKey: ['spare-parts-advanced-search', filters],
+    queryFn: async () => {
+      if (!actor) return [];
+      // Backend method: searchSparePartsAdvanced(filters: SearchFilters): async [SparePartSearchResult]
+      throw new Error('Backend method searchSparePartsAdvanced not yet implemented');
+    },
+    enabled: !!actor && !isFetching && hasFilters,
   });
 }

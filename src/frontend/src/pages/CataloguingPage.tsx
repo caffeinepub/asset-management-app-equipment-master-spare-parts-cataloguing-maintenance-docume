@@ -1,46 +1,67 @@
-import { useNavigate } from '@tanstack/react-router';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState } from 'react';
+import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import AttributeTemplateImport from '@/components/AttributeTemplateImport';
+import SparePartMasterForm from '@/components/SparePartMasterForm';
+import SparePartAdvancedSearch from '@/components/SparePartAdvancedSearch';
 
 export default function CataloguingPage() {
-  const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
+  const [activeTab, setActiveTab] = useState('import');
+
+  if (!identity) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Cataloguing Module</h1>
+          <p className="text-muted-foreground mt-1">Spare Part Master with Noun-Modifier Classification</p>
+        </div>
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please log in to access the cataloguing module.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Cataloguing</h1>
-          <p className="text-muted-foreground mt-1">Attribute-based cataloguing using templates</p>
-        </div>
-        <Button variant="outline" onClick={() => navigate({ to: '/' })}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Equipment Master
-        </Button>
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">Cataloguing Module</h1>
+        <p className="text-muted-foreground mt-1">Spare Part Master with Noun-Modifier Classification</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Feature Not Available</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              The cataloguing feature requires additional backend support that is not yet implemented.
-              This feature will be available in a future update.
-            </AlertDescription>
-          </Alert>
-          <div className="mt-4 text-sm text-muted-foreground">
-            <p>Required backend methods:</p>
-            <ul className="list-disc list-inside mt-2 space-y-1">
-              <li>createCataloguingRecord - to create new cataloguing records</li>
-              <li>deleteCataloguingRecord - to delete cataloguing records</li>
-            </ul>
-          </div>
-        </CardContent>
-      </Card>
+      <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
+        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <AlertDescription className="text-amber-800 dark:text-amber-200">
+          <strong>Backend Update Required:</strong> The cataloguing module requires additional backend methods for attribute management, 
+          noun-modifier classification, and advanced search. The UI is ready but backend implementation is pending.
+        </AlertDescription>
+      </Alert>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="import">Import Templates</TabsTrigger>
+          <TabsTrigger value="master">Spare Part Master</TabsTrigger>
+          <TabsTrigger value="search">Advanced Search</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="import" className="mt-6">
+          <AttributeTemplateImport />
+        </TabsContent>
+
+        <TabsContent value="master" className="mt-6">
+          <SparePartMasterForm />
+        </TabsContent>
+
+        <TabsContent value="search" className="mt-6">
+          <SparePartAdvancedSearch />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

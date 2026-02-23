@@ -1,3 +1,4 @@
+// OUTDATED: Attribute management features need to be implemented in the next iteration.
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
@@ -9,8 +10,6 @@ import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
-
-
 
 actor {
   include MixinStorage();
