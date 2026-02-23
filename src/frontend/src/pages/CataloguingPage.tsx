@@ -1,14 +1,33 @@
 import { useState } from 'react';
 import { useInternetIdentity } from '@/hooks/useInternetIdentity';
+import { useIsCallerAdmin } from '@/hooks/useQueries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ShieldAlert } from 'lucide-react';
 import AttributeTemplateImport from '@/components/AttributeTemplateImport';
 import SparePartMasterForm from '@/components/SparePartMasterForm';
 import SparePartAdvancedSearch from '@/components/SparePartAdvancedSearch';
 
 export default function CataloguingPage() {
   const { identity } = useInternetIdentity();
+  
+  /**
+   * ADMIN ROLE CHECKING MECHANISM:
+   * 
+   * The useIsCallerAdmin hook retrieves the current user's admin status from the backend
+   * by calling actor.isCallerAdmin(). This backend method checks if the authenticated user's
+   * principal matches the admin principal or has been assigned the admin role through the
+   * authorization component.
+   * 
+   * The hook returns a React Query object with:
+   * - data: boolean indicating if the user is an admin
+   * - isLoading: true while the backend call is in progress
+   * 
+   * This admin status is used to control access to the attribute template import feature,
+   * which is restricted to administrators only.
+   */
+  const { data: isAdmin, isLoading: isAdminLoading } = useIsCallerAdmin();
+  
   const [activeTab, setActiveTab] = useState('import');
 
   if (!identity) {
@@ -50,8 +69,46 @@ export default function CataloguingPage() {
           <TabsTrigger value="search">Advanced Search</TabsTrigger>
         </TabsList>
 
+        {/**
+         * CONDITIONAL RENDERING BASED ON ADMIN ROLE:
+         * 
+         * The "Import Templates" tab content is conditionally rendered based on the user's admin status:
+         * 
+         * 1. While loading (isAdminLoading === true):
+         *    - Shows a "Loading permissions..." message to prevent UI flashing
+         * 
+         * 2. If user is admin (isAdmin === true):
+         *    - Renders the AttributeTemplateImport component, allowing Excel file upload
+         *    - This component calls the backend's importAttributeTemplateFromExcel method
+         * 
+         * 3. If user is NOT admin (isAdmin === false):
+         *    - Shows an access-denied alert with a clear message
+         *    - Prevents non-admin users from accessing the import functionality
+         * 
+         * This pattern ensures that only administrators can import attribute templates,
+         * which define the dynamic fields shown in the Spare Part Master form. The backend
+         * enforces this restriction by checking permissions in the importAttributeTemplateFromExcel
+         * method, which calls AccessControl.hasPermission(accessControlState, caller, #admin).
+         */}
         <TabsContent value="import" className="mt-6">
-          <AttributeTemplateImport />
+          {isAdminLoading ? (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Loading permissions...
+              </AlertDescription>
+            </Alert>
+          ) : isAdmin ? (
+            <AttributeTemplateImport />
+          ) : (
+            <Alert variant="destructive">
+              <ShieldAlert className="h-4 w-4" />
+              <AlertDescription>
+                <strong>Admin Access Required:</strong> Only administrators can import attribute templates from Excel. 
+                Please contact your system administrator if you need to upload templates.
+              </AlertDescription>
+            </Alert>
+          )}
         </TabsContent>
 
         <TabsContent value="master" className="mt-6">

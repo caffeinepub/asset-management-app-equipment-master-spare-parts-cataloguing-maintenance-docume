@@ -14,7 +14,6 @@ import {
 import { exportToCSV, exportToPDF } from '@/lib/exports';
 import { formatDate } from '@/lib/dates';
 import { ArrowLeft, FileSpreadsheet, FileText } from 'lucide-react';
-import type { MaintenanceRecord } from '@/backend';
 
 export default function ReportsPage() {
   const navigate = useNavigate();
@@ -22,19 +21,7 @@ export default function ReportsPage() {
 
   const { data: equipmentList } = useGetEquipmentList();
   const { data: spareParts } = useGetSparePartsByEquipment(selectedEquipment);
-  const { data: maintenanceDueData } = useGetMaintenanceDueReport();
-
-  // Flatten maintenance records from all equipment
-  const maintenanceDue = useMemo(() => {
-    if (!maintenanceDueData) return [];
-    const allRecords: MaintenanceRecord[] = [];
-    maintenanceDueData.forEach((item) => {
-      item.maintenanceRecords.forEach((record) => {
-        allRecords.push(record);
-      });
-    });
-    return allRecords;
-  }, [maintenanceDueData]);
+  const { data: maintenanceDue } = useGetMaintenanceDueReport();
 
   const handleExportEquipmentCSV = () => {
     if (!equipmentList) return;

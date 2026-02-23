@@ -7,18 +7,10 @@
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-update-the-spare-part-master-form-to-dynamically-render-attribute-fields-based-on-the-definitions-loaded-from-the-uploaded-file",
-      "title": "Update the Spare Part Master form to dynamically render attribute fields based on the definitions loaded from the uploaded file",
+      "id": "feature-display-the-frontend-admin-role-checking-logic-specifically-how-the-cataloguingpage-determines-whether-to-show-the-attribute-template-import-interface-to-admin-users-only",
+      "title": "Display the frontend admin role checking logic, specifically how the CataloguingPage determines whether to show the attribute template import interface to admin users only",
       "reqIds": [
-        "REQ-21"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-connect-the-attributetemplateimport-component-to-use-the-uploaded-file-as-the-source-for-attribute-definitions-instead-of-relying-on-static-templates",
-      "title": "Connect the AttributeTemplateImport component to use the uploaded file as the source for attribute definitions instead of relying on static templates",
-      "reqIds": [
-        "REQ-22"
+        "REQ-2"
       ],
       "version": 1
     }
@@ -26,22 +18,14 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Parse the uploaded Excel file to extract attribute definitions including attribute names, data types, validation rules, and any associated metadata",
+      "summary": "Display the current admin role implementation from the backend code (backend/main.mo), specifically how user roles are determined and which principals have admin access",
       "reqIds": [
-        "REQ-19"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Store the parsed attribute definitions in the backend state so they can be used for spare part cataloguing and validation",
-      "reqIds": [
-        "REQ-20"
+        "REQ-1"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Use uploaded file for attribute definitions",
+  "projectName": "Show admin role implementation in code",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

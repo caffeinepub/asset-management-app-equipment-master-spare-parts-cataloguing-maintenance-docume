@@ -10,6 +10,11 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminRoleInfo {
+  'roleType' : string,
+  'adminPrincipal' : Principal,
+  'isAdmin' : boolean,
+}
 export interface CataloguingRecord {
   'status' : { 'submitted' : null } |
     { 'draft' : null },
@@ -117,6 +122,7 @@ export interface _SERVICE {
     [string, boolean, boolean, boolean],
     Array<SparePart>
   >,
+  'getAdminRole' : ActorMethod<[Principal], AdminRoleInfo>,
   'getAllCataloguingRecords' : ActorMethod<[bigint], Array<CataloguingRecord>>,
   'getAllDocuments' : ActorMethod<[bigint], Array<Document>>,
   'getAllEquipment' : ActorMethod<[], Array<Equipment>>,
@@ -127,6 +133,10 @@ export interface _SERVICE {
   'getEquipment' : ActorMethod<[bigint], [] | [Equipment]>,
   'getSparePartsForEquipment' : ActorMethod<[bigint], Array<SparePart>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'importAttributeTemplateFromExcel' : ActorMethod<
+    [ExternalBlob, string],
+    string
+  >,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'unlinkSparePartFromEquipment' : ActorMethod<[bigint, bigint], boolean>,

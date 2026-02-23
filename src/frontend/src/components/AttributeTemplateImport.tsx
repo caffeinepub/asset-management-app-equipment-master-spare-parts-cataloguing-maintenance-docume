@@ -1,15 +1,43 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 import { useImportAttributeTemplate } from '@/hooks/useQueries';
 import { fileToExternalBlob, formatFileSize } from '@/lib/files';
 import { toast } from 'sonner';
+import { safeExtractErrorMessage } from '@/lib/errors';
 
+/**
+ * ADMIN-ONLY ATTRIBUTE TEMPLATE IMPORT COMPONENT:
+ * 
+ * This component is only rendered when the user has admin role, as determined by the parent
+ * CataloguingPage's role checking logic using the useIsCallerAdmin hook.
+ * 
+ * The component provides an interface for uploading Excel files containing attribute definitions
+ * for noun-modifier combinations. When the user uploads a file and clicks "Import Template",
+ * the component:
+ * 
+ * 1. Converts the browser File object to an ExternalBlob (with upload progress tracking)
+ * 2. Calls the backend's importAttributeTemplateFromExcel method via the useImportAttributeTemplate hook
+ * 3. The backend method is protected by admin-only access control:
+ *    - Checks: AccessControl.hasPermission(accessControlState, caller, #admin)
+ *    - Traps with "Unauthorized: Only admins can import attribute templates from Excel" if not admin
+ * 
+ * This ensures that only administrators can define the dynamic attribute fields that appear
+ * in the Spare Part Master form. The backend stores these templates and uses them to validate
+ * and structure spare part data with custom attributes.
+ * 
+ * Security Note:
+ * The admin-only restriction is enforced at both the UI level (conditional rendering in parent)
+ * and the backend level (permission check in the canister method), providing defense in depth.
+ */
 export default function AttributeTemplateImport() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [templateName, setTemplateName] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -34,6 +62,12 @@ export default function AttributeTemplateImport() {
 
     setSelectedFile(file);
     setUploadProgress(0);
+    
+    // Auto-populate template name from filename if empty
+    if (!templateName) {
+      const nameWithoutExt = file.name.replace(/\.(xlsx?|ods)$/i, '');
+      setTemplateName(nameWithoutExt);
+    }
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -44,7 +78,7 @@ export default function AttributeTemplateImport() {
     if (file) {
       handleFileSelect(file);
     }
-  }, []);
+  }, [templateName]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -57,27 +91,42 @@ export default function AttributeTemplateImport() {
   }, []);
 
   const handleImport = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    if (!templateName.trim()) {
+      toast.error('Please enter a template name');
+      return;
+    }
 
     try {
       const blob = await fileToExternalBlob(selectedFile, (percentage) => {
         setUploadProgress(percentage);
       });
 
-      const result = await importMutation.mutateAsync(blob);
+      const result = await importMutation.mutateAsync({ 
+        blob, 
+        templateName: templateName.trim() 
+      });
       
-      const attributeCount = (result as any)?.attributeCount || 0;
-      toast.success(`Attribute template imported successfully! ${attributeCount} attributes loaded.`);
+      toast.success(`Attribute template "${templateName}" imported successfully!`);
+      
+      // Reset form
       setSelectedFile(null);
+      setTemplateName('');
       setUploadProgress(0);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Import error:', error);
-      toast.error(error.message || 'Failed to import attribute template');
+      const errorMessage = safeExtractErrorMessage(error);
+      toast.error(errorMessage || 'Failed to import attribute template');
     }
   };
 
   const handleClear = () => {
     setSelectedFile(null);
+    setTemplateName('');
     setUploadProgress(0);
   };
 
@@ -97,6 +146,21 @@ export default function AttributeTemplateImport() {
             The uploaded file will define the dynamic attributes shown in the Spare Part Master form.
           </AlertDescription>
         </Alert>
+
+        <div className="space-y-2">
+          <Label htmlFor="templateName">Template Name</Label>
+          <Input
+            id="templateName"
+            type="text"
+            placeholder="e.g., Mechanical Parts Template"
+            value={templateName}
+            onChange={(e) => setTemplateName(e.target.value)}
+            disabled={importMutation.isPending}
+          />
+          <p className="text-xs text-muted-foreground">
+            Give this template a descriptive name for easy identification
+          </p>
+        </div>
 
         <div
           onDrop={handleDrop}
@@ -161,7 +225,7 @@ export default function AttributeTemplateImport() {
                 <Alert variant="destructive">
                   <XCircle className="h-4 w-4" />
                   <AlertDescription>
-                    {importMutation.error?.message || 'Failed to import template'}
+                    {safeExtractErrorMessage(importMutation.error) || 'Failed to import template'}
                   </AlertDescription>
                 </Alert>
               )}
@@ -169,7 +233,7 @@ export default function AttributeTemplateImport() {
               <div className="flex gap-2 justify-center">
                 <Button
                   onClick={handleImport}
-                  disabled={importMutation.isPending || uploadProgress > 0}
+                  disabled={importMutation.isPending || uploadProgress > 0 || !templateName.trim()}
                 >
                   {importMutation.isPending ? 'Importing...' : 'Import Template'}
                 </Button>

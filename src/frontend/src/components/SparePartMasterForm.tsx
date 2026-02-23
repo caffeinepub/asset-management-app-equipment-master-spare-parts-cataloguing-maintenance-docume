@@ -57,9 +57,9 @@ export default function SparePartMasterForm() {
   // Load spare part data when editing
   useEffect(() => {
     if (sparePartQuery.data) {
-      setNoun(sparePartQuery.data.noun);
-      setModifier(sparePartQuery.data.modifier);
-      setAttributes(sparePartQuery.data.attributes);
+      setNoun(sparePartQuery.data.noun || '');
+      setModifier(sparePartQuery.data.modifier || '');
+      setAttributes(sparePartQuery.data.attributes || {});
       setMode('edit');
     }
   }, [sparePartQuery.data]);
@@ -123,12 +123,14 @@ export default function SparePartMasterForm() {
       } else if (selectedPartNumber) {
         await updateMutation.mutateAsync({
           partNumber: selectedPartNumber,
+          noun,
+          modifier,
           attributes: Object.entries(attributes),
         });
         toast.success('Spare part updated successfully');
       }
     } catch (error: any) {
-      console.error('Save error:', error);
+      console.error('Submit error:', error);
       toast.error(error.message || 'Failed to save spare part');
     }
   };
@@ -143,193 +145,154 @@ export default function SparePartMasterForm() {
     setValidationErrors({});
   };
 
-  const hasBackendSupport = nounsQuery.data && nounsQuery.data.length > 0;
-
   return (
     <div className="space-y-6">
+      <Alert>
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          <strong>Backend methods required:</strong> getNouns(), getModifiers(noun), getAttributesForNounModifier(noun, modifier),
+          createSparePartWithAttributes(), updateSparePartWithAttributes()
+        </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Spare Part Master</CardTitle>
-              <CardDescription>Create or edit spare parts using noun-modifier classification with dynamic attributes</CardDescription>
+              <CardTitle>Spare Part Master Form</CardTitle>
+              <CardDescription>
+                {mode === 'create' ? 'Create a new spare part with noun-modifier classification' : 'Edit existing spare part'}
+              </CardDescription>
             </div>
-            {mode === 'edit' ? (
-              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
-                <Edit className="h-3 w-3 mr-1" />
-                Editing Existing
+            <div className="flex gap-2">
+              <Badge variant={mode === 'create' ? 'default' : 'secondary'}>
+                {mode === 'create' ? <Plus className="h-3 w-3 mr-1" /> : <Edit className="h-3 w-3 mr-1" />}
+                {mode === 'create' ? 'Create Mode' : 'Edit Mode'}
               </Badge>
-            ) : (
-              <Badge variant="outline" className="bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-300">
-                <Plus className="h-3 w-3 mr-1" />
-                Creating New
-              </Badge>
-            )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {!hasBackendSupport && (
-            <Alert className="bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800">
-              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-              <AlertDescription className="text-amber-800 dark:text-amber-200">
-                <strong>Waiting for attribute template:</strong> Please upload an attribute template in the Import Templates tab first.
-                The form will display dynamic attributes based on the uploaded file.
-              </AlertDescription>
-            </Alert>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField label="Select Spare Part (for editing)" help="Leave empty to create new">
+              <SparePartNumberLookup value={selectedPartNumber} onChange={handleSparePartSelect} />
+            </FormField>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Spare Part Number Lookup */}
-            <FormField label="Spare Part Number" help="Search for existing spare part or leave empty to create new">
-              <SparePartNumberLookup
-                value={selectedPartNumber}
-                onChange={handleSparePartSelect}
-                disabled={createMutation.isPending || updateMutation.isPending}
+            <FormField label="Part Number" help="Auto-generated">
+              <Input
+                value={selectedPartNumber?.toString() || nextNumberQuery.data?.toString() || '...'}
+                disabled
+                className="bg-muted"
               />
             </FormField>
+          </div>
 
-            {/* Auto-generated Part Number Display */}
-            {mode === 'create' && (
-              <FormField label="Auto-Generated Part Number">
-                <div className="flex items-center gap-2">
-                  <Input
-                    value={nextNumberQuery.data?.toString() || 'Loading...'}
-                    disabled
-                    className="bg-muted"
-                  />
-                  <Badge variant="secondary" className="text-xs">System Generated</Badge>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField label="Noun" required>
+                <Select value={noun} onValueChange={setNoun} disabled={nounsQuery.data?.length === 0}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select noun" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {nounsQuery.data && nounsQuery.data.length > 0 ? (
+                      nounsQuery.data.map((n) => (
+                        <SelectItem key={n} value={n}>
+                          {n}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__placeholder__" disabled>
+                        No nouns available - upload attribute template first
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
               </FormField>
-            )}
 
-            {mode === 'edit' && selectedPartNumber && (
-              <FormField label="Part Number">
-                <div className="flex items-center gap-2">
-                  <Input value={selectedPartNumber.toString()} disabled className="bg-muted" />
-                  <Badge variant="secondary" className="text-xs">Existing</Badge>
-                </div>
-              </FormField>
-            )}
-
-            {/* Noun Selection */}
-            <FormField label="Noun" required>
-              <Select value={noun} onValueChange={setNoun} disabled={mode === 'edit' || !hasBackendSupport}>
-                <SelectTrigger>
-                  <SelectValue placeholder={hasBackendSupport ? "Select noun" : "Upload template first"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {nounsQuery.data?.map((n) => (
-                    <SelectItem key={n} value={n}>
-                      {n}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-
-            {/* Modifier Selection */}
-            {noun && (
               <FormField label="Modifier" required>
-                <Select value={modifier} onValueChange={setModifier} disabled={mode === 'edit'}>
+                <Select value={modifier} onValueChange={setModifier} disabled={!noun || modifiersQuery.data?.length === 0}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select modifier" />
                   </SelectTrigger>
                   <SelectContent>
-                    {modifiersQuery.data?.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {m}
+                    {modifiersQuery.data && modifiersQuery.data.length > 0 ? (
+                      modifiersQuery.data.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__placeholder__" disabled>
+                        {!noun ? 'Select a noun first' : 'No modifiers available'}
                       </SelectItem>
-                    ))}
+                    )}
                   </SelectContent>
                 </Select>
               </FormField>
-            )}
+            </div>
 
-            {/* Dynamic Attributes from Uploaded Template */}
             {noun && modifier && attributesQuery.data && attributesQuery.data.length > 0 && (
-              <div className="space-y-4 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Attributes</h3>
-                  <Badge variant="outline" className="text-xs">From Uploaded Template</Badge>
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold">Dynamic Attributes</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {attributesQuery.data.map((attr) => (
+                    <FormField
+                      key={attr.fieldName}
+                      label={attr.fieldName}
+                      required={attr.required}
+                      help={attr.validationRules || undefined}
+                      error={validationErrors[attr.fieldName]}
+                    >
+                      {attr.dataType === 'dropdown' ? (
+                        <Select
+                          value={attributes[attr.fieldName] || ''}
+                          onValueChange={(value) => handleAttributeChange(attr.fieldName, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={`Select ${attr.fieldName}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="option1">Option 1</SelectItem>
+                            <SelectItem value="option2">Option 2</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : attr.dataType === 'bool' ? (
+                        <Select
+                          value={attributes[attr.fieldName] || ''}
+                          onValueChange={(value) => handleAttributeChange(attr.fieldName, value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">Yes</SelectItem>
+                            <SelectItem value="false">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type={attr.dataType === 'int' || attr.dataType === 'float' ? 'number' : 'text'}
+                          step={attr.dataType === 'float' ? '0.01' : undefined}
+                          value={attributes[attr.fieldName] || ''}
+                          onChange={(e) => handleAttributeChange(attr.fieldName, e.target.value)}
+                          placeholder={`Enter ${attr.fieldName}`}
+                        />
+                      )}
+                    </FormField>
+                  ))}
                 </div>
-                {attributesQuery.data.map((attr) => (
-                  <FormField
-                    key={attr.name}
-                    label={attr.name}
-                    required={attr.required}
-                    help={attr.validationRules || undefined}
-                    error={validationErrors[attr.name]}
-                  >
-                    {attr.attributeType === 'textarea' ? (
-                      <Textarea
-                        value={attributes[attr.name] || ''}
-                        onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
-                        placeholder={`Enter ${attr.name.toLowerCase()}`}
-                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
-                      />
-                    ) : attr.attributeType === 'number' ? (
-                      <Input
-                        type="number"
-                        value={attributes[attr.name] || ''}
-                        onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
-                        placeholder={`Enter ${attr.name.toLowerCase()}`}
-                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
-                      />
-                    ) : attr.attributeType === 'date' ? (
-                      <Input
-                        type="date"
-                        value={attributes[attr.name] || ''}
-                        onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
-                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
-                      />
-                    ) : attr.attributeType === 'select' && attr.allowedValues ? (
-                      <Select
-                        value={attributes[attr.name] || ''}
-                        onValueChange={(value) => handleAttributeChange(attr.name, value)}
-                      >
-                        <SelectTrigger className={validationErrors[attr.name] ? 'border-destructive' : ''}>
-                          <SelectValue placeholder={`Select ${attr.name.toLowerCase()}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {attr.allowedValues.map((val) => (
-                            <SelectItem key={val} value={val}>
-                              {val}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        type="text"
-                        value={attributes[attr.name] || ''}
-                        onChange={(e) => handleAttributeChange(attr.name, e.target.value)}
-                        placeholder={`Enter ${attr.name.toLowerCase()}`}
-                        className={validationErrors[attr.name] ? 'border-destructive' : ''}
-                      />
-                    )}
-                  </FormField>
-                ))}
               </div>
             )}
 
-            {/* Auto-generated Description */}
-            {autoDescription && (
-              <FormField label="Short Description">
-                <div className="flex items-center gap-2">
-                  <Textarea value={autoDescription} disabled className="bg-muted" rows={2} />
-                  <Badge variant="secondary" className="text-xs">Auto-generated</Badge>
-                </div>
-              </FormField>
-            )}
+            <FormField label="Auto-Generated Description" help="Generated from noun, modifier, and key attributes">
+              <Textarea value={autoDescription} disabled className="bg-muted" rows={3} />
+            </FormField>
 
-            {/* Action Buttons */}
             <div className="flex gap-2">
-              <Button
-                type="submit"
-                disabled={!noun || !modifier || !hasBackendSupport || createMutation.isPending || updateMutation.isPending}
-              >
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || !noun || !modifier}>
                 <Save className="h-4 w-4 mr-2" />
-                {mode === 'create' ? 'Create Spare Part' : 'Update Attributes'}
+                {mode === 'create' ? 'Create Spare Part' : 'Update Spare Part'}
               </Button>
               <Button type="button" variant="outline" onClick={handleReset}>
                 Reset Form
@@ -339,8 +302,7 @@ export default function SparePartMasterForm() {
         </CardContent>
       </Card>
 
-      {/* Equipment Links Section */}
-      {mode === 'edit' && selectedPartNumber && (
+      {selectedPartNumber && mode === 'edit' && (
         <SparePartEquipmentLinks partNumber={selectedPartNumber} />
       )}
     </div>

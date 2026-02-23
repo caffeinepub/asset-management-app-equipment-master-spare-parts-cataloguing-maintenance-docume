@@ -1,59 +1,31 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Use uploaded file for attribute definitions",
+  "title": "Show admin role implementation in code",
   "requirements": [
     {
-      "id": "REQ-21",
-      "summary": "Update the Spare Part Master form to dynamically render attribute fields based on the definitions loaded from the uploaded file",
+      "id": "REQ-2",
+      "summary": "Display the frontend admin role checking logic, specifically how the CataloguingPage determines whether to show the attribute template import interface to admin users only",
       "acceptanceCriteria": [
-        "Spare Part Master form displays attributes from the uploaded template",
-        "Form fields match the data types specified in the attribute definitions",
-        "Validation rules from the template are applied to form inputs",
-        "Form adapts when different attribute templates are loaded"
+        "Frontend code shows the conditional rendering logic for admin-only features",
+        "The mechanism for retrieving and checking user roles is clear",
+        "Integration between backend role checks and frontend UI visibility is documented"
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/components/SparePartMasterForm.tsx",
-          "operation": "modify",
-          "description": "Modify the form to fetch attribute definitions from the backend and dynamically render attribute fields. Replace the hardcoded attribute list with fields generated from the uploaded template schema. Add a query hook to fetch attribute definitions and update the form state to include dynamic attributes. Ensure the generated description includes the dynamic attributes. Verify that field types (text, number, select, date) and validation rules from the backend are correctly applied to each form input."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a React Query hook `useGetAttributeDefinitions` to fetch attribute definitions from the backend. This hook should call a backend capability that returns the current attribute schema including field names, types, validation rules, and metadata. Enable the query when the actor is available and handle loading/error states appropriately."
-        },
-        {
-          "path": "frontend/src/lib/validation.ts",
-          "operation": "modify",
-          "description": "Extend validation functions to support dynamic attribute validation rules. Add a function that accepts attribute definitions with validation rules (required, min/max length, pattern, allowed values) and returns appropriate validation results. Ensure validation messages are clear and specific to each rule type."
-        }
-      ]
-    },
-    {
-      "id": "REQ-22",
-      "summary": "Connect the AttributeTemplateImport component to use the uploaded file as the source for attribute definitions instead of relying on static templates",
-      "acceptanceCriteria": [
-        "AttributeTemplateImport component successfully uploads the file to backend",
-        "Backend processes the file and returns confirmation of loaded attributes",
-        "Frontend displays success message with count of attributes loaded",
-        "Spare Part Master form immediately reflects the new attribute schema"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AttributeTemplateImport.tsx",
-          "operation": "modify",
-          "description": "Update the component to integrate with the backend file upload capability using the blob-storage component. Use ExternalBlob.fromBytes() to prepare the uploaded Excel file for transmission to the backend. Modify the mutation to call the backend capability that processes the uploaded Excel file and extracts attribute definitions. Update success handling to display the count of attributes loaded from the backend response. Add error handling for parsing failures with meaningful user messages. Invalidate the attribute definitions query after successful upload so the Spare Part Master form refreshes with new schema. Verify the blob-storage component's usage instructions before implementing the file upload flow."
-        },
-        {
-          "path": "frontend/src/hooks/useQueries.ts",
-          "operation": "modify",
-          "description": "Add a mutation hook `useImportAttributeTemplate` that uploads an Excel file (as ExternalBlob) to the backend and processes it. The mutation should accept a File object, convert it to ExternalBlob using the files.ts utility, and call the backend capability that parses the Excel file and stores attribute definitions. On success, invalidate the attribute definitions query to trigger a refresh of forms using the new schema. Handle progress tracking for the upload using ExternalBlob.withUploadProgress."
-        },
         {
           "path": "frontend/src/pages/CataloguingPage.tsx",
           "operation": "modify",
-          "description": "Remove or update the warning message that indicates backend implementation is pending once the attribute template upload and dynamic form rendering are functional. Ensure the AttributeTemplateImport tab properly triggers the SparePartMasterForm tab to refresh when a new template is loaded. Consider adding a visual indicator showing which template is currently active."
+          "description": "Add inline code comments documenting the admin role checking mechanism. Specifically document: (1) how useGetCallerUserRole hook retrieves the current user's role from the backend, (2) how the conditional rendering logic (isAdmin variable derived from userRole?.data === 'admin') determines whether to show the attribute template import tab, (3) how the tab visibility is controlled through the tabs array filtering based on isAdmin state. Include references to the authorization component's frontend usage patterns for role-based UI rendering."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Add inline code comments to the useGetCallerUserRole hook documenting: (1) how it calls actor.getCallerUserRole() to retrieve the current user's role from the backend, (2) the React Query configuration that enables caching and refetching behavior, (3) how this hook integrates with the authorization component to provide role information to frontend components. Reference the backend interface method getCallerUserRole() that returns the UserRole enum."
+        },
+        {
+          "path": "frontend/src/components/AttributeTemplateImport.tsx",
+          "operation": "modify",
+          "description": "Add inline code comments documenting that this component is only rendered when the user has admin role, as determined by the parent CataloguingPage's role checking logic. Document the admin-only nature of the importAttributeTemplateFromExcel backend capability that this component invokes."
         }
       ]
     }

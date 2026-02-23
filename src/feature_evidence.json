@@ -2,30 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-update-the-spare-part-master-form-to-dynamically-render-attribute-fields-based-on-the-definitions-loaded-from-the-uploaded-file",
-      "featureTitle": "Update the Spare Part Master form to dynamically render attribute fields based on the definitions loaded from the uploaded file",
-      "files": [
-        "frontend/src/components/SparePartMasterForm.tsx",
-        "frontend/src/hooks/useQueries.ts",
-        "frontend/src/lib/validation.ts"
-      ],
-      "components": [
-        "blob-storage@4.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-21"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-connect-the-attributetemplateimport-component-to-use-the-uploaded-file-as-the-source-for-attribute-definitions-instead-of-relying-on-static-templates",
-      "featureTitle": "Connect the AttributeTemplateImport component to use the uploaded file as the source for attribute definitions instead of relying on static templates",
+      "featureId": "feature-display-the-frontend-admin-role-checking-logic-specifically-how-the-cataloguingpage-determines-whether-to-show-the-attribute-template-import-interface-to-admin-users-only",
+      "featureTitle": "Display the frontend admin role checking logic, specifically how the CataloguingPage determines whether to show the attribute template import interface to admin users only",
       "files": [
         "frontend/src/components/AttributeTemplateImport.tsx",
         "frontend/src/hooks/useQueries.ts",
@@ -41,7 +19,7 @@
         "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-22"
+        "REQ-2"
       ],
       "confidence": "high"
     }

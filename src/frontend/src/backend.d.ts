@@ -14,6 +14,7 @@ export class ExternalBlob {
     static fromBytes(blob: Uint8Array<ArrayBuffer>): ExternalBlob;
     withUploadProgress(onProgress: (percentage: number) => void): ExternalBlob;
 }
+export type Time = bigint;
 export interface Document {
     documentType: string;
     additionalInformation: string;
@@ -22,15 +23,6 @@ export interface Document {
     docId: bigint;
     uploadDate: Time;
 }
-export interface CataloguingRecord {
-    status: Variant_submitted_draft;
-    additionalInformation: string;
-    equipmentNumber: bigint;
-    templateName: string;
-    attributes: Array<[string, string]>;
-    materialDescription: string;
-}
-export type Time = bigint;
 export interface MaintenanceRecord {
     maintenanceStatus: Variant_scheduled_completed_overdue;
     additionalInformation: string;
@@ -64,6 +56,19 @@ export interface SparePart {
     quantity: bigint;
     attachment?: ExternalBlob;
     manufacturerPartNo: string;
+}
+export interface AdminRoleInfo {
+    roleType: string;
+    adminPrincipal: Principal;
+    isAdmin: boolean;
+}
+export interface CataloguingRecord {
+    status: Variant_submitted_draft;
+    additionalInformation: string;
+    equipmentNumber: bigint;
+    templateName: string;
+    attributes: Array<[string, string]>;
+    materialDescription: string;
 }
 export interface UserProfile {
     name: string;
@@ -100,6 +105,7 @@ export interface backendInterface {
     deleteSparePartByPartNumber(partNumber: bigint): Promise<boolean>;
     findEquipmentByMatching(searchTerm: string, matchEquipmentNumber: boolean, matchEquipmentTagNumber: boolean, matchName: boolean, matchModel: boolean, matchSerialNumber: boolean): Promise<Array<Equipment>>;
     findSparePartByMatching(searchTerm: string, matchManufacturerPartNo: boolean, matchName: boolean, matchDescription: boolean): Promise<Array<SparePart>>;
+    getAdminRole(caller: Principal): Promise<AdminRoleInfo>;
     getAllCataloguingRecords(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
     getAllDocuments(equipmentNumber: bigint): Promise<Array<Document>>;
     getAllEquipment(): Promise<Array<Equipment>>;
@@ -110,6 +116,7 @@ export interface backendInterface {
     getEquipment(equipmentNumber: bigint): Promise<Equipment | null>;
     getSparePartsForEquipment(equipmentNumber: bigint): Promise<Array<SparePart>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    importAttributeTemplateFromExcel(blob: ExternalBlob, templateName: string): Promise<string>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     unlinkSparePartFromEquipment(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;

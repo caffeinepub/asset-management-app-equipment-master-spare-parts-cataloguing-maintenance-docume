@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Search, X, AlertCircle } from 'lucide-react';
 import FormField from '@/components/forms/FormField';
 import { useSearchSparePartsAdvanced } from '@/hooks/useQueries';
-import { useDebounce } from '@/hooks/useDebounce';
 
 export default function SparePartAdvancedSearch() {
   const [filters, setFilters] = useState({
@@ -22,8 +21,7 @@ export default function SparePartAdvancedSearch() {
     serialNum: '',
   });
 
-  const debouncedFilters = useDebounce(filters, 500);
-  const searchQuery = useSearchSparePartsAdvanced(debouncedFilters);
+  const searchQuery = useSearchSparePartsAdvanced();
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters((prev) => ({

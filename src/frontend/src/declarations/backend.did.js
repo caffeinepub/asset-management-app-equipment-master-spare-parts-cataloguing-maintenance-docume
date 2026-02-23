@@ -58,6 +58,11 @@ export const Equipment = IDL.Record({
   'location' : IDL.Text,
   'equipmentTagNumber' : IDL.Text,
 });
+export const AdminRoleInfo = IDL.Record({
+  'roleType' : IDL.Text,
+  'adminPrincipal' : IDL.Principal,
+  'isAdmin' : IDL.Bool,
+});
 export const CataloguingRecord = IDL.Record({
   'status' : IDL.Variant({ 'submitted' : IDL.Null, 'draft' : IDL.Null }),
   'additionalInformation' : IDL.Text,
@@ -137,6 +142,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(SparePart)],
       ['query'],
     ),
+  'getAdminRole' : IDL.Func([IDL.Principal], [AdminRoleInfo], ['query']),
   'getAllCataloguingRecords' : IDL.Func(
       [IDL.Nat],
       [IDL.Vec(CataloguingRecord)],
@@ -162,6 +168,11 @@ export const idlService = IDL.Service({
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
       ['query'],
+    ),
+  'importAttributeTemplateFromExcel' : IDL.Func(
+      [ExternalBlob, IDL.Text],
+      [IDL.Text],
+      [],
     ),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
@@ -223,6 +234,11 @@ export const idlFactory = ({ IDL }) => {
     'warrantyExpiry' : Time,
     'location' : IDL.Text,
     'equipmentTagNumber' : IDL.Text,
+  });
+  const AdminRoleInfo = IDL.Record({
+    'roleType' : IDL.Text,
+    'adminPrincipal' : IDL.Principal,
+    'isAdmin' : IDL.Bool,
   });
   const CataloguingRecord = IDL.Record({
     'status' : IDL.Variant({ 'submitted' : IDL.Null, 'draft' : IDL.Null }),
@@ -303,6 +319,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(SparePart)],
         ['query'],
       ),
+    'getAdminRole' : IDL.Func([IDL.Principal], [AdminRoleInfo], ['query']),
     'getAllCataloguingRecords' : IDL.Func(
         [IDL.Nat],
         [IDL.Vec(CataloguingRecord)],
@@ -328,6 +345,11 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
         ['query'],
+      ),
+    'importAttributeTemplateFromExcel' : IDL.Func(
+        [ExternalBlob, IDL.Text],
+        [IDL.Text],
+        [],
       ),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),

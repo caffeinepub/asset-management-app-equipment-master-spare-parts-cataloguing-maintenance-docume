@@ -1,80 +1,54 @@
 {
   "kind": "build_request",
-  "title": "Use uploaded file for attribute definitions",
+  "title": "Show admin role implementation in code",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-19",
-      "text": "Parse the uploaded Excel file to extract attribute definitions including attribute names, data types, validation rules, and any associated metadata",
+      "id": "REQ-1",
+      "text": "Display the current admin role implementation from the backend code (backend/main.mo), specifically how user roles are determined and which principals have admin access",
       "target": "backend",
       "source": {
         "messageIds": [
-          "msg-user-use-file"
+          "msg-recent"
+        ],
+        "quotes": [
+          "yes please",
+          "show you the admin role implementation"
         ]
       },
       "acceptanceCriteria": [
-        "Backend can parse Excel file format and extract attribute schema data",
-        "Extracted attributes include name, type, and validation constraints",
-        "Parsing errors are handled gracefully with meaningful error messages"
+        "Backend code clearly shows how admin roles are assigned or checked",
+        "Any hardcoded admin principals or role logic is visible",
+        "The authorization mechanism for admin-only features is documented"
       ]
     },
     {
-      "id": "REQ-20",
-      "text": "Store the parsed attribute definitions in the backend state so they can be used for spare part cataloguing and validation",
-      "target": "backend",
-      "source": {
-        "messageIds": [
-          "msg-user-use-file"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Attribute definitions are persisted in backend state",
-        "Attributes can be retrieved and listed via backend query methods",
-        "Attribute schema supports dynamic field types and validation rules"
-      ]
-    },
-    {
-      "id": "REQ-21",
-      "text": "Update the Spare Part Master form to dynamically render attribute fields based on the definitions loaded from the uploaded file",
+      "id": "REQ-2",
+      "text": "Display the frontend admin role checking logic, specifically how the CataloguingPage determines whether to show the attribute template import interface to admin users only",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-user-use-file"
+          "msg-recent"
+        ],
+        "quotes": [
+          "show you the admin role implementation"
         ]
       },
       "acceptanceCriteria": [
-        "Spare Part Master form displays attributes from the uploaded template",
-        "Form fields match the data types specified in the attribute definitions",
-        "Validation rules from the template are applied to form inputs",
-        "Form adapts when different attribute templates are loaded"
-      ]
-    },
-    {
-      "id": "REQ-22",
-      "text": "Connect the AttributeTemplateImport component to use the uploaded file as the source for attribute definitions instead of relying on static templates",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-user-use-file"
-        ]
-      },
-      "acceptanceCriteria": [
-        "AttributeTemplateImport component successfully uploads the file to backend",
-        "Backend processes the file and returns confirmation of loaded attributes",
-        "Frontend displays success message with count of attributes loaded",
-        "Spare Part Master form immediately reflects the new attribute schema"
+        "Frontend code shows the conditional rendering logic for admin-only features",
+        "The mechanism for retrieving and checking user roles is clear",
+        "Integration between backend role checks and frontend UI visibility is documented"
       ]
     }
   ],
   "constraints": [
-    "Maintain compatibility with existing SparePartMasterForm component structure",
-    "Preserve the noun-modifier-attribute taxonomy approach",
-    "Do not modify existing cataloguing records or spare parts already created"
+    "Do not modify any existing code - only display/document the current implementation",
+    "Focus on admin role checking specifically for the attribute template import feature"
   ],
   "nonGoals": [
-    "Creating a visual attribute template editor",
-    "Supporting multiple simultaneous attribute templates",
-    "Versioning or historical tracking of attribute definitions"
+    "Changing the admin role implementation",
+    "Adding new admin features",
+    "Modifying user authentication logic"
   ],
   "imageRequirements": {
     "required": [],

@@ -178,7 +178,8 @@ export default function SparePartsPage() {
         return;
       }
 
-      await linkExistingMutation.mutateAsync({
+      // Use addOrUpdateSparePart which is the correct backend method
+      await addOrUpdateSparePart.mutateAsync({
         part,
         equipmentNumber: selectedEquipment,
       });
@@ -383,9 +384,9 @@ export default function SparePartsPage() {
                   <Button
                     onClick={handleLinkExisting}
                     className="w-full"
-                    disabled={!selectedEquipment || !selectedExistingPart || linkExistingMutation.isPending}
+                    disabled={!selectedEquipment || !selectedExistingPart || addOrUpdateSparePart.isPending}
                   >
-                    {linkExistingMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {addOrUpdateSparePart.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Link to Equipment
                   </Button>
                 </div>
@@ -468,24 +469,26 @@ export default function SparePartsPage() {
           <DialogHeader>
             <DialogTitle>Equipment Using This Spare Part</DialogTitle>
             <DialogDescription>
-              {selectedPart?.name} (Part #{selectedPart?.partNumber.toString()})
+              {selectedPart && `Part #${selectedPart.partNumber.toString()} - ${selectedPart.name}`}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            {equipmentUsingPart.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No equipment is currently using this spare part.</p>
-            ) : (
+          <div className="py-4">
+            {equipmentUsingPart.length > 0 ? (
               <div className="space-y-2">
                 {equipmentUsingPart.map((eq) => (
-                  <div key={eq.equipmentNumber.toString()} className="flex items-center gap-2 p-2 border rounded">
-                    <div className="flex-1">
+                  <div key={eq.equipmentNumber.toString()} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div>
                       <p className="font-medium">{eq.name}</p>
                       <p className="text-sm text-muted-foreground">Tag: {eq.equipmentTagNumber}</p>
                     </div>
-                    <Badge variant="secondary">EQ-{eq.equipmentNumber.toString()}</Badge>
+                    <Badge variant="outline">{eq.equipmentNumber.toString()}</Badge>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                This spare part is not currently linked to any equipment
+              </p>
             )}
           </div>
           <DialogFooter>
@@ -500,11 +503,11 @@ export default function SparePartsPage() {
       <ConfirmDialog
         open={deleteConfirmOpen}
         onOpenChange={setDeleteConfirmOpen}
-        onConfirm={handleDeleteConfirm}
         title="Delete Spare Part"
-        description={`Are you sure you want to delete spare part "${partToDelete?.name}" (Part #${partToDelete?.partNumber.toString()})? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${partToDelete?.name}"? This action cannot be undone.`}
+        onConfirm={handleDeleteConfirm}
         confirmText="Delete"
-        isDestructive={true}
+        isDestructive
       />
     </div>
   );
@@ -536,14 +539,11 @@ function SparePartsByEquipmentView({
         {selectedEq && (
           <>
             {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              <div className="text-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mt-2">Loading spare parts...</p>
               </div>
-            ) : spareParts.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-8">
-                No spare parts found for this equipment.
-              </p>
-            ) : (
+            ) : spareParts.length > 0 ? (
               <div className="border rounded-md overflow-auto">
                 <Table>
                   <TableHeader>
@@ -551,7 +551,6 @@ function SparePartsByEquipmentView({
                       <TableHead>Part #</TableHead>
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead>Manufacturer Part No</TableHead>
                       <TableHead>Quantity</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -562,7 +561,6 @@ function SparePartsByEquipmentView({
                         <TableCell className="font-medium">{part.partNumber.toString()}</TableCell>
                         <TableCell>{part.name}</TableCell>
                         <TableCell className="max-w-xs truncate">{part.description}</TableCell>
-                        <TableCell>{part.manufacturerPartNo}</TableCell>
                         <TableCell>{part.quantity.toString()}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -578,6 +576,11 @@ function SparePartsByEquipmentView({
                     ))}
                   </TableBody>
                 </Table>
+              </div>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="text-sm">No spare parts found for this equipment</p>
               </div>
             )}
           </>

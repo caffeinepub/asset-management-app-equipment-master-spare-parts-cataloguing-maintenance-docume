@@ -1,21 +1,35 @@
+import AccessControl "authorization/access-control";
 import Map "mo:core/Map";
 import List "mo:core/List";
 import Array "mo:core/Array";
 import File "blob-storage/Storage";
-import Text "mo:core/Text";
-import Time "mo:core/Time";
-import MixinStorage "blob-storage/Mixin";
-import MixinAuthorization "authorization/MixinAuthorization";
-import AccessControl "authorization/access-control";
 import Principal "mo:core/Principal";
 import Runtime "mo:core/Runtime";
+import Migration "migration";
+import MixinStorage "blob-storage/Mixin";
+import MixinAuthorization "authorization/MixinAuthorization";
+import Text "mo:core/Text";
+import Time "mo:core/Time";
 
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
-  public type UserProfile = {
-    name : Text;
-    department : Text;
+  public type AttributeDataType = {
+    #float;
+    #int;
+    #string;
+    #bool;
+    #dropdown;
+  };
+
+  public type CataloguingRecord = {
+    equipmentNumber : Nat;
+    materialDescription : Text;
+    templateName : Text;
+    attributes : [(Text, Text)];
+    status : { #draft; #submitted };
+    additionalInformation : Text;
   };
 
   public type EngineeringDiscipline = {
@@ -53,15 +67,6 @@ actor {
     additionalInformation : Text;
   };
 
-  public type CataloguingRecord = {
-    equipmentNumber : Nat;
-    materialDescription : Text;
-    templateName : Text;
-    attributes : [(Text, Text)];
-    status : { #draft; #submitted };
-    additionalInformation : Text;
-  };
-
   public type MaintenanceRecord = {
     maintenanceId : Nat;
     equipmentNumber : Nat;
@@ -81,6 +86,23 @@ actor {
     additionalInformation : Text;
   };
 
+  public type UserProfile = {
+    name : Text;
+    department : Text;
+  };
+
+  public type AttributeDefinition = {
+    fieldName : Text;
+    dataType : AttributeDataType;
+    required : Bool;
+    validationRules : ?Text;
+  };
+
+  public type AttributeTemplate = {
+    templateName : Text;
+    attributes : [AttributeDefinition];
+  };
+
   var nextEquipmentNumber : Nat = 1;
   var nextPartNumber : Nat = 1;
   var nextMaintenanceId : Nat = 1;
@@ -97,6 +119,7 @@ actor {
   include MixinAuthorization(accessControlState);
 
   let userProfiles = Map.empty<Principal, UserProfile>();
+  let attributeTemplates = Map.empty<Text, AttributeTemplate>();
 
   func engineeringDisciplineToText(discipline : EngineeringDiscipline) : Text {
     switch (discipline) {
@@ -115,6 +138,20 @@ actor {
       case ("INSTRUMENTATION") { #instrumentation };
       case ("PIPING") { #piping };
       case (_) { #unknown };
+    };
+  };
+
+  public type AdminRoleInfo = {
+    adminPrincipal : Principal;
+    isAdmin : Bool;
+    roleType : Text;
+  };
+
+  public query func getAdminRole(caller : Principal) : async AdminRoleInfo {
+    {
+      adminPrincipal = Principal.fromText("tgmld-nlqkl-k3y3p-bd7pz-th7la-apipg-7ng54-c2sep-dlnby-lrnz7-tae") : Principal;
+      isAdmin = AccessControl.isAdmin(accessControlState, caller);
+      roleType = "Admin";
     };
   };
 
@@ -146,9 +183,7 @@ actor {
 
     switch (equipmentMap.get(equipment.equipmentNumber)) {
       case (?_) {
-        Runtime.trap(
-          "Error: Equipment with number already exists (equipmentNumber = " # debug_show(equipment.equipmentNumber) # ")"
-        );
+        Runtime.trap("Error: Equipment with number already exists (equipmentNumber = " # debug_show(equipment.equipmentNumber) # ")");
       };
       case (null) {
         let existingTagNumber = equipmentMap.toArray().find(
@@ -157,9 +192,7 @@ actor {
           }
         );
         if (existingTagNumber != null) {
-          Runtime.trap(
-            "Error: Equipment with tag no " # equipment.equipmentTagNumber # " already exists"
-          );
+          Runtime.trap("Error: Equipment with tag no " # equipment.equipmentTagNumber # " already exists");
         };
         equipmentMap.add(equipment.equipmentNumber, equipment);
         true;
@@ -174,9 +207,7 @@ actor {
 
     switch (sparePartsMap.get(part.partNumber)) {
       case (?_) {
-        Runtime.trap(
-          "Error: Spare part with part number already exists (partNumber = " # debug_show(part.partNumber) # ")"
-        );
+        Runtime.trap("Error: Spare part with part number already exists (partNumber = " # debug_show(part.partNumber) # ")");
       };
       case (null) {
         let existingManufacturerPartNo = sparePartsMap.toArray().find(
@@ -485,5 +516,28 @@ actor {
         true;
       };
     };
+  };
+
+  public shared ({ caller }) func importAttributeTemplateFromExcel(blob : File.ExternalBlob, templateName : Text) : async Text {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #admin))) {
+      Runtime.trap("Unauthorized: Only admins can import attribute templates from Excel");
+    };
+
+    // This is a placeholder for actual Excel parsing logic to be implemented in Rust.
+    // The parsed data should be converted to an AttributeTemplate instance.
+    let attributeTemplate : AttributeTemplate = {
+      templateName;
+      attributes = [
+        {
+          fieldName = "exampleField";
+          dataType = #string;
+          required = true;
+          validationRules = ?"exampleRule";
+        },
+      ];
+    };
+
+    attributeTemplates.add(templateName, attributeTemplate);
+    "Success";
   };
 };

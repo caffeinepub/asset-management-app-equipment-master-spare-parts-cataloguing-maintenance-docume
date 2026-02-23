@@ -1,7 +1,28 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document, UserProfile, ExternalBlob } from '@/backend';
-import { extractErrorMessage } from '@/lib/errors';
+import type { Equipment, SparePart, CataloguingRecord, MaintenanceRecord, Document, UserProfile, UserRole, ExternalBlob } from '@/backend';
+import { Variant_scheduled_completed_overdue } from '@/backend';
+import { safeExtractErrorMessage } from '@/lib/errors';
+
+// ============================================================================
+// Type Exports for Components
+// ============================================================================
+
+// Define AttributeDefinition type locally since it's not in backend yet
+export interface AttributeDefinition {
+  fieldName: string;
+  dataType: 'float' | 'int' | 'string' | 'bool' | 'dropdown';
+  required: boolean;
+  validationRules?: string;
+}
+
+// Extended types for cataloguing features (not yet in backend)
+export interface SparePartWithAttributes extends SparePart {
+  noun?: string;
+  modifier?: string;
+  attributes?: Record<string, string>;
+  equipmentList?: Equipment[];
+}
 
 // ============================================================================
 // User Profile Queries
@@ -39,6 +60,92 @@ export function useSaveCallerUserProfile() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
     },
+  });
+}
+
+// ============================================================================
+// User Role Queries
+// ============================================================================
+
+/**
+ * USER ROLE RETRIEVAL HOOK:
+ * 
+ * This hook retrieves the current authenticated user's role from the backend by calling
+ * actor.getCallerUserRole(). The backend method returns a UserRole enum value which can be:
+ * - UserRole.admin: Full administrative access
+ * - UserRole.user: Standard user access
+ * - UserRole.guest: Limited guest access
+ * 
+ * The backend determines the role by:
+ * 1. Checking if the caller's principal matches the hardcoded admin principal
+ * 2. Looking up any role assignments in the authorization component's state
+ * 3. Defaulting to 'guest' for unauthenticated or unassigned users
+ * 
+ * React Query Configuration:
+ * - queryKey: ['currentUserRole'] - Unique identifier for caching this query
+ * - enabled: Only runs when actor is initialized and not fetching
+ * - retry: false - Don't retry on failure to avoid unnecessary backend calls
+ * 
+ * Integration with Authorization Component:
+ * This hook integrates with the prefabricated authorization component which provides
+ * role-based access control. The backend's AccessControl module manages role assignments
+ * and permission checks, ensuring that only authorized users can perform restricted actions.
+ */
+export function useGetCallerUserRole() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<UserRole>({
+    queryKey: ['currentUserRole'],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.getCallerUserRole();
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
+  });
+}
+
+/**
+ * ADMIN STATUS CHECK HOOK:
+ * 
+ * This hook provides a simplified boolean check for whether the current user has admin privileges.
+ * It calls the backend's isCallerAdmin() method, which internally checks if the authenticated
+ * user's principal has admin permissions through the AccessControl module.
+ * 
+ * Backend Implementation:
+ * The backend method isCallerAdmin() calls AccessControl.isAdmin(accessControlState, caller),
+ * which checks if the caller's principal:
+ * 1. Matches the hardcoded admin principal (set during canister initialization)
+ * 2. Has been explicitly assigned the admin role via assignCallerUserRole
+ * 
+ * React Query Configuration:
+ * - queryKey: ['isCallerAdmin'] - Cached separately from the full role query
+ * - Returns: boolean (true if admin, false otherwise)
+ * - enabled: Only runs when actor is initialized and not fetching
+ * - retry: false - Prevents retry loops on permission errors
+ * 
+ * Usage Pattern:
+ * This hook is used in components that need to conditionally render admin-only features,
+ * such as the attribute template import interface in CataloguingPage. The boolean return
+ * value makes it easy to use in conditional rendering logic:
+ * 
+ * const { data: isAdmin, isLoading } = useIsCallerAdmin();
+ * if (isAdmin) { // render admin features }
+ * 
+ * The hook integrates with the authorization component's role-based UI rendering patterns,
+ * ensuring that frontend visibility matches backend permission enforcement.
+ */
+export function useIsCallerAdmin() {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<boolean>({
+    queryKey: ['isCallerAdmin'],
+    queryFn: async () => {
+      if (!actor) return false;
+      return actor.isCallerAdmin();
+    },
+    enabled: !!actor && !actorFetching,
+    retry: false,
   });
 }
 
@@ -107,8 +214,8 @@ export function useCreateEquipment() {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['nextEquipmentNumber'] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -128,8 +235,8 @@ export function useUpdateEquipment() {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
       queryClient.invalidateQueries({ queryKey: ['equipment', equipment.equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -148,8 +255,8 @@ export function useDeleteEquipment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -247,8 +354,8 @@ export function useCreateSparePart() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spareParts'] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -268,14 +375,15 @@ export function useAddOrUpdateSparePart() {
       queryClient.invalidateQueries({ queryKey: ['spareParts'] });
       queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
 
 // Alias for compatibility
 export const useUpdateSparePart = useAddOrUpdateSparePart;
+export const useLinkExistingSparePart = useAddOrUpdateSparePart;
 
 export function useUnlinkSparePartFromEquipment() {
   const { actor } = useActor();
@@ -289,10 +397,11 @@ export function useUnlinkSparePartFromEquipment() {
       return result;
     },
     onSuccess: (_, { equipmentNumber }) => {
+      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
       queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -311,8 +420,8 @@ export function useDeleteSparePartByPartNumber() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['spareParts'] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
@@ -336,13 +445,15 @@ export function useFindSparePartByMatching() {
       matchDescription?: boolean;
     }) => {
       if (!actor) throw new Error('Actor not initialized');
-      return actor.findSparePartByMatching(searchTerm, matchManufacturerPartNo, matchName, matchDescription);
+      return actor.findSparePartByMatching(
+        searchTerm,
+        matchManufacturerPartNo,
+        matchName,
+        matchDescription
+      );
     },
   });
 }
-
-// Alias for compatibility
-export const useSearchSpareParts = useFindSparePartByMatching;
 
 // Global search for spare parts
 export function useGlobalSearchSpareParts(searchTerm: string) {
@@ -358,416 +469,15 @@ export function useGlobalSearchSpareParts(searchTerm: string) {
   });
 }
 
-// Link existing spare part to equipment
-export function useLinkExistingSparePart() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ part, equipmentNumber }: { part: SparePart; equipmentNumber: bigint }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      const result = await actor.addOrUpdateSparePart(part, equipmentNumber);
-      if (!result) throw new Error('Failed to link spare part');
-      return result;
-    },
-    onSuccess: (_, { equipmentNumber }) => {
-      queryClient.invalidateQueries({ queryKey: ['spareParts', 'equipment', equipmentNumber.toString()] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Get equipment using a spare part
-export function useGetEquipmentUsingSparePart(partNumber: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Equipment[]>({
-    queryKey: ['equipmentUsingSparePart', partNumber?.toString()],
-    queryFn: async () => {
-      if (!actor || !partNumber) return [];
-      const allEquipment = await actor.getAllEquipment();
-      const equipmentWithPart: Equipment[] = [];
-      
-      for (const equipment of allEquipment) {
-        const spareParts = await actor.getSparePartsForEquipment(equipment.equipmentNumber);
-        if (spareParts.some(sp => sp.partNumber === partNumber)) {
-          equipmentWithPart.push(equipment);
-        }
-      }
-      
-      return equipmentWithPart;
-    },
-    enabled: !!actor && !isFetching && partNumber !== null,
-  });
-}
-
 // ============================================================================
-// Cataloguing Module Queries (Pending Backend Implementation)
-// ============================================================================
-
-export type AttributeDefinition = {
-  name: string;
-  attributeType: 'text' | 'number' | 'textarea' | 'select' | 'date';
-  validationRules?: string;
-  required: boolean;
-  allowedValues?: string[];
-};
-
-export type SparePartWithAttributes = {
-  partNumber: bigint;
-  noun: string;
-  modifier: string;
-  attributes: Record<string, string>;
-  description: string;
-  equipmentList?: Equipment[];
-};
-
-// Import attribute template from Excel file
-export function useImportAttributeTemplate() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (excelBlob: ExternalBlob) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Backend method required: importAttributeTemplateFromExcel
-      if (!('importAttributeTemplateFromExcel' in actor)) {
-        throw new Error('Backend method importAttributeTemplateFromExcel not implemented');
-      }
-      
-      const result = await (actor as any).importAttributeTemplateFromExcel(excelBlob);
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['attributeDefinitions'] });
-      queryClient.invalidateQueries({ queryKey: ['nouns'] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Get all attribute definitions
-export function useGetAttributeDefinitions() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<AttributeDefinition[]>({
-    queryKey: ['attributeDefinitions'],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      // Backend method required: getAttributeDefinitions
-      if (!('getAttributeDefinitions' in actor)) {
-        console.warn('Backend method getAttributeDefinitions not implemented');
-        return [];
-      }
-      
-      return (actor as any).getAttributeDefinitions();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Get list of nouns
-export function useGetNouns() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['nouns'],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      // Backend method required: getNouns
-      if (!('getNouns' in actor)) {
-        console.warn('Backend method getNouns not implemented');
-        return [];
-      }
-      
-      return (actor as any).getNouns();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Get modifiers for a specific noun
-export function useGetModifiers(noun: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string[]>({
-    queryKey: ['modifiers', noun],
-    queryFn: async () => {
-      if (!actor || !noun) return [];
-      
-      // Backend method required: getModifiersForNoun
-      if (!('getModifiersForNoun' in actor)) {
-        console.warn('Backend method getModifiersForNoun not implemented');
-        return [];
-      }
-      
-      return (actor as any).getModifiersForNoun(noun);
-    },
-    enabled: !!actor && !isFetching && !!noun,
-  });
-}
-
-// Get attributes for a specific noun-modifier combination
-export function useGetAttributesForNounModifier(noun: string, modifier: string) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<AttributeDefinition[]>({
-    queryKey: ['attributes', noun, modifier],
-    queryFn: async () => {
-      if (!actor || !noun || !modifier) return [];
-      
-      // Backend method required: getAttributesForNounModifier
-      if (!('getAttributesForNounModifier' in actor)) {
-        console.warn('Backend method getAttributesForNounModifier not implemented');
-        return [];
-      }
-      
-      return (actor as any).getAttributesForNounModifier(noun, modifier);
-    },
-    enabled: !!actor && !isFetching && !!noun && !!modifier,
-  });
-}
-
-// Get next spare part number
-export function useGetNextSparePartNumber() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<bigint>({
-    queryKey: ['nextSparePartNumber'],
-    queryFn: async () => {
-      if (!actor) return BigInt(0);
-      
-      // Backend method required: getNextSparePartNumber
-      if (!('getNextSparePartNumber' in actor)) {
-        console.warn('Backend method getNextSparePartNumber not implemented');
-        return BigInt(0);
-      }
-      
-      return (actor as any).getNextSparePartNumber();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Create spare part with attributes
-export function useCreateSparePartWithAttributes() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      noun,
-      modifier,
-      attributes,
-    }: {
-      noun: string;
-      modifier: string;
-      attributes: Array<[string, string]>;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Backend method required: createSparePartWithAttributes
-      if (!('createSparePartWithAttributes' in actor)) {
-        throw new Error('Backend method createSparePartWithAttributes not implemented');
-      }
-      
-      const partNumber = await (actor as any).createSparePartWithAttributes(noun, modifier, attributes);
-      return partNumber;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
-      queryClient.invalidateQueries({ queryKey: ['nextSparePartNumber'] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Update spare part attributes
-export function useUpdateSparePartAttributes() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      partNumber,
-      attributes,
-    }: {
-      partNumber: bigint;
-      attributes: Array<[string, string]>;
-    }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Backend method required: updateSparePartAttributes
-      if (!('updateSparePartAttributes' in actor)) {
-        throw new Error('Backend method updateSparePartAttributes not implemented');
-      }
-      
-      const result = await (actor as any).updateSparePartAttributes(partNumber, attributes);
-      if (!result) throw new Error('Failed to update spare part attributes');
-      return result;
-    },
-    onSuccess: (_, { partNumber }) => {
-      queryClient.invalidateQueries({ queryKey: ['spareParts'] });
-      queryClient.invalidateQueries({ queryKey: ['sparePartByNumber', partNumber.toString()] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Get spare part by number (with attributes)
-export function useGetSparePartByNumber(partNumber: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<SparePartWithAttributes | null>({
-    queryKey: ['sparePartByNumber', partNumber?.toString()],
-    queryFn: async () => {
-      if (!actor || !partNumber) return null;
-      
-      // Backend method required: getSparePartByNumber
-      if (!('getSparePartByNumber' in actor)) {
-        console.warn('Backend method getSparePartByNumber not implemented');
-        return null;
-      }
-      
-      return (actor as any).getSparePartByNumber(partNumber);
-    },
-    enabled: !!actor && !isFetching && partNumber !== null,
-  });
-}
-
-// Get all spare parts with attributes (for cataloguing)
-export function useGetAllSparePartsWithAttributes() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<SparePartWithAttributes[]>({
-    queryKey: ['sparePartsWithAttributes'],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      // Backend method required: getAllSparePartsWithAttributes
-      if (!('getAllSparePartsWithAttributes' in actor)) {
-        console.warn('Backend method getAllSparePartsWithAttributes not implemented');
-        return [];
-      }
-      
-      return (actor as any).getAllSparePartsWithAttributes();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// Get equipment for spare part
-export function useGetEquipmentForSparePart(partNumber: bigint | null) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<Equipment[]>({
-    queryKey: ['equipmentForSparePart', partNumber?.toString()],
-    queryFn: async () => {
-      if (!actor || !partNumber) return [];
-      
-      // Backend method required: getEquipmentForSparePart
-      if (!('getEquipmentForSparePart' in actor)) {
-        console.warn('Backend method getEquipmentForSparePart not implemented');
-        return [];
-      }
-      
-      return (actor as any).getEquipmentForSparePart(partNumber);
-    },
-    enabled: !!actor && !isFetching && partNumber !== null,
-  });
-}
-
-// Link spare part to equipment
-export function useLinkSparePartToEquipment() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ partNumber, equipmentNumber }: { partNumber: bigint; equipmentNumber: bigint }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Backend method required: linkSparePartToEquipment
-      if (!('linkSparePartToEquipment' in actor)) {
-        throw new Error('Backend method linkSparePartToEquipment not implemented');
-      }
-      
-      const result = await (actor as any).linkSparePartToEquipment(partNumber, equipmentNumber);
-      if (!result) throw new Error('Failed to link spare part to equipment');
-      return result;
-    },
-    onSuccess: (_, { partNumber }) => {
-      queryClient.invalidateQueries({ queryKey: ['equipmentForSparePart', partNumber.toString()] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Unlink spare part from equipment (cataloguing version)
-export function useUnlinkSparePartFromEquipmentCataloguing() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ partNumber, equipmentNumber }: { partNumber: bigint; equipmentNumber: bigint }) => {
-      if (!actor) throw new Error('Actor not initialized');
-      
-      // Use existing backend method
-      const result = await actor.unlinkSparePartFromEquipment(equipmentNumber, partNumber);
-      if (!result) throw new Error('Failed to unlink spare part from equipment');
-      return result;
-    },
-    onSuccess: (_, { partNumber }) => {
-      queryClient.invalidateQueries({ queryKey: ['equipmentForSparePart', partNumber.toString()] });
-    },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
-    },
-  });
-}
-
-// Advanced search for spare parts
-export function useSearchSparePartsAdvanced(filters: any) {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<SparePartWithAttributes[]>({
-    queryKey: ['sparePartsAdvancedSearch', filters],
-    queryFn: async () => {
-      if (!actor) return [];
-      
-      // Backend method required: searchSparePartsAdvanced
-      if (!('searchSparePartsAdvanced' in actor)) {
-        console.warn('Backend method searchSparePartsAdvanced not implemented');
-        return [];
-      }
-      
-      return (actor as any).searchSparePartsAdvanced(filters);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ============================================================================
-// Cataloguing Records Queries
+// Cataloguing Queries
 // ============================================================================
 
 export function useGetAllCataloguingRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<CataloguingRecord[]>({
-    queryKey: ['cataloguingRecords', equipmentNumber?.toString()],
+    queryKey: ['cataloguing', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
       return actor.getAllCataloguingRecords(equipmentNumber);
@@ -788,56 +498,224 @@ export function useUpdateCataloguingRecord() {
       return result;
     },
     onSuccess: (_, record) => {
-      queryClient.invalidateQueries({ queryKey: ['cataloguingRecords', record.equipmentNumber.toString()] });
+      queryClient.invalidateQueries({ queryKey: ['cataloguing', record.equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
+    },
+  });
+}
+
+export function useImportAttributeTemplate() {
+  const { actor } = useActor();
+
+  return useMutation({
+    mutationFn: async ({ blob, templateName }: { blob: ExternalBlob; templateName: string }) => {
+      if (!actor) throw new Error('Actor not initialized');
+      return actor.importAttributeTemplateFromExcel(blob, templateName);
+    },
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
 
 // ============================================================================
-// Maintenance Records Queries
+// Stub Hooks for Features Not Yet Implemented in Backend
+// ============================================================================
+
+// Stub for advanced spare part search (not yet implemented in backend)
+export function useSearchSparePartsAdvanced() {
+  return {
+    data: [] as SparePartWithAttributes[],
+    isLoading: false,
+    isError: false,
+    error: null,
+  };
+}
+
+// Stub for getting all spare parts with attributes (not yet implemented in backend)
+export function useGetAllSparePartsWithAttributes() {
+  const { data: spareParts = [] } = useGetAllSpareParts();
+  
+  return useQuery<SparePartWithAttributes[]>({
+    queryKey: ['sparePartsWithAttributes'],
+    queryFn: async () => {
+      // Convert regular spare parts to extended type
+      return spareParts.map(part => ({
+        ...part,
+        noun: undefined,
+        modifier: undefined,
+        attributes: {},
+        equipmentList: [],
+      }));
+    },
+    enabled: spareParts.length > 0,
+  });
+}
+
+// Stub for getting nouns (not yet implemented in backend)
+export function useGetNouns() {
+  return useQuery<string[]>({
+    queryKey: ['nouns'],
+    queryFn: async () => {
+      return ['Pump', 'Valve', 'Motor', 'Bearing', 'Seal', 'Filter'];
+    },
+  });
+}
+
+// Stub for getting modifiers (not yet implemented in backend)
+export function useGetModifiers(noun: string) {
+  return useQuery<string[]>({
+    queryKey: ['modifiers', noun],
+    queryFn: async () => {
+      if (!noun) return [];
+      return ['Centrifugal', 'Rotary', 'Reciprocating', 'Positive Displacement'];
+    },
+    enabled: !!noun,
+  });
+}
+
+// Stub for getting attributes for noun-modifier combination (not yet implemented in backend)
+export function useGetAttributesForNounModifier(noun: string, modifier: string) {
+  return useQuery<AttributeDefinition[]>({
+    queryKey: ['attributes', noun, modifier],
+    queryFn: async () => {
+      if (!noun || !modifier) return [];
+      return [
+        { fieldName: 'Material', dataType: 'string', required: true, validationRules: undefined },
+        { fieldName: 'Size', dataType: 'string', required: true, validationRules: undefined },
+        { fieldName: 'Pressure Rating', dataType: 'string', required: false, validationRules: undefined },
+      ];
+    },
+    enabled: !!noun && !!modifier,
+  });
+}
+
+// Stub for getting next spare part number (not yet implemented in backend)
+export function useGetNextSparePartNumber() {
+  const { data: spareParts = [] } = useGetAllSpareParts();
+  
+  return useQuery<bigint>({
+    queryKey: ['nextSparePartNumber'],
+    queryFn: async () => {
+      if (spareParts.length === 0) return BigInt(1);
+      const maxNumber = spareParts.reduce((max, part) => 
+        part.partNumber > max ? part.partNumber : max, BigInt(0));
+      return maxNumber + BigInt(1);
+    },
+  });
+}
+
+// Stub for getting spare part by number (not yet implemented in backend)
+export function useGetSparePartByNumber(partNumber: bigint | null) {
+  const { data: spareParts = [] } = useGetAllSpareParts();
+  
+  return useQuery<SparePartWithAttributes | null>({
+    queryKey: ['sparePart', partNumber?.toString()],
+    queryFn: async () => {
+      if (!partNumber) return null;
+      const part = spareParts.find(p => p.partNumber === partNumber);
+      if (!part) return null;
+      return {
+        ...part,
+        noun: undefined,
+        modifier: undefined,
+        attributes: {},
+        equipmentList: [],
+      };
+    },
+    enabled: partNumber !== null,
+  });
+}
+
+// Stub for creating spare part with attributes (not yet implemented in backend)
+export function useCreateSparePartWithAttributes() {
+  const createMutation = useCreateSparePart();
+  
+  return useMutation({
+    mutationFn: async ({ noun, modifier, attributes }: { noun: string; modifier: string; attributes: [string, string][] }) => {
+      // For now, create a basic spare part without attributes
+      const part: SparePart = {
+        partNumber: BigInt(Date.now()),
+        name: `${noun} - ${modifier}`,
+        description: `${noun} ${modifier}`,
+        quantity: BigInt(0),
+        supplier: '',
+        manufacturer: '',
+        manufacturerPartNo: '',
+        modelSerial: '',
+        attachment: undefined,
+        additionalInformation: '',
+      };
+      await createMutation.mutateAsync(part);
+      return part.partNumber;
+    },
+  });
+}
+
+// Stub for updating spare part attributes (not yet implemented in backend)
+export function useUpdateSparePartAttributes() {
+  return useMutation({
+    mutationFn: async ({ partNumber, noun, modifier, attributes }: { partNumber: bigint; noun: string; modifier: string; attributes: [string, string][] }) => {
+      // Stub implementation - backend method not available
+      console.log('Update spare part attributes:', { partNumber, noun, modifier, attributes });
+      return true;
+    },
+  });
+}
+
+// Stub for getting equipment for spare part (not yet implemented in backend)
+export function useGetEquipmentForSparePart(partNumber: bigint | null) {
+  return useQuery<Equipment[]>({
+    queryKey: ['equipmentForSparePart', partNumber?.toString()],
+    queryFn: async () => {
+      // Backend method not available
+      return [];
+    },
+    enabled: partNumber !== null,
+  });
+}
+
+// Stub for linking spare part to equipment (not yet implemented in backend)
+export function useLinkSparePartToEquipment() {
+  const linkMutation = useAddOrUpdateSparePart();
+  
+  return useMutation({
+    mutationFn: async ({ partNumber, equipmentNumber }: { partNumber: bigint; equipmentNumber: bigint }) => {
+      // Use existing addOrUpdateSparePart as a workaround
+      // This requires fetching the spare part first
+      throw new Error('Backend method linkSparePartToEquipment not available');
+    },
+  });
+}
+
+// Stub for getting equipment using spare part (not yet implemented in backend)
+export function useGetEquipmentUsingSparePart(partNumber: bigint | null) {
+  return useQuery<Equipment[]>({
+    queryKey: ['equipmentUsingSparePart', partNumber?.toString()],
+    queryFn: async () => {
+      // Backend method not available
+      return [];
+    },
+    enabled: partNumber !== null,
+  });
+}
+
+// ============================================================================
+// Maintenance Queries
 // ============================================================================
 
 export function useGetAllMaintenanceRecords(equipmentNumber: bigint | null) {
   const { actor, isFetching } = useActor();
 
   return useQuery<MaintenanceRecord[]>({
-    queryKey: ['maintenanceRecords', equipmentNumber?.toString()],
+    queryKey: ['maintenance', equipmentNumber?.toString()],
     queryFn: async () => {
       if (!actor || !equipmentNumber) return [];
       return actor.getAllMaintenanceRecords(equipmentNumber);
     },
     enabled: !!actor && !isFetching && equipmentNumber !== null,
-  });
-}
-
-export type MaintenanceDueReportItem = {
-  equipment: Equipment;
-  maintenanceRecords: MaintenanceRecord[];
-};
-
-export function useGetMaintenanceDueReport() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<MaintenanceDueReportItem[]>({
-    queryKey: ['maintenanceDueReport'],
-    queryFn: async () => {
-      if (!actor) return [];
-      const allEquipment = await actor.getAllEquipment();
-      const results: MaintenanceDueReportItem[] = [];
-      
-      for (const equipment of allEquipment) {
-        const maintenanceRecords = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
-        if (maintenanceRecords.length > 0) {
-          results.push({ equipment, maintenanceRecords });
-        }
-      }
-      
-      return results;
-    },
-    enabled: !!actor && !isFetching,
   });
 }
 
@@ -853,17 +731,44 @@ export function useUpdateMaintenanceRecord() {
       return result;
     },
     onSuccess: (_, record) => {
-      queryClient.invalidateQueries({ queryKey: ['maintenanceRecords', record.equipmentNumber.toString()] });
-      queryClient.invalidateQueries({ queryKey: ['maintenanceDueReport'] });
+      queryClient.invalidateQueries({ queryKey: ['maintenance', record.equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }
 
+// Get maintenance records filtered by status
+export function useGetMaintenanceDue() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<MaintenanceRecord[]>({
+    queryKey: ['maintenanceDue'],
+    queryFn: async () => {
+      if (!actor) return [];
+      const allEquipment = await actor.getAllEquipment();
+      const allRecords: MaintenanceRecord[] = [];
+      
+      for (const equipment of allEquipment) {
+        const records = await actor.getAllMaintenanceRecords(equipment.equipmentNumber);
+        allRecords.push(...records);
+      }
+      
+      return allRecords.filter(
+        record => record.maintenanceStatus === Variant_scheduled_completed_overdue.scheduled ||
+                  record.maintenanceStatus === Variant_scheduled_completed_overdue.overdue
+      );
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// Alias for compatibility
+export const useGetMaintenanceDueReport = useGetMaintenanceDue;
+
 // ============================================================================
-// Documents Queries
+// Document Queries
 // ============================================================================
 
 export function useGetAllDocuments(equipmentNumber: bigint | null) {
@@ -893,8 +798,8 @@ export function useDeleteDocument() {
     onSuccess: (_, { equipmentNumber }) => {
       queryClient.invalidateQueries({ queryKey: ['documents', equipmentNumber.toString()] });
     },
-    onError: (error: any) => {
-      throw new Error(extractErrorMessage(error));
+    onError: (error: unknown) => {
+      throw new Error(safeExtractErrorMessage(error));
     },
   });
 }

@@ -89,6 +89,14 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface _CaffeineStorageRefillResult {
+    success?: boolean;
+    topped_up_amount?: bigint;
+}
+export type Time = bigint;
+export interface _CaffeineStorageRefillInformation {
+    proposed_top_up_amount?: bigint;
+}
 export interface Document {
     documentType: string;
     additionalInformation: string;
@@ -96,18 +104,6 @@ export interface Document {
     filePath: ExternalBlob;
     docId: bigint;
     uploadDate: Time;
-}
-export interface CataloguingRecord {
-    status: Variant_submitted_draft;
-    additionalInformation: string;
-    equipmentNumber: bigint;
-    templateName: string;
-    attributes: Array<[string, string]>;
-    materialDescription: string;
-}
-export type Time = bigint;
-export interface _CaffeineStorageRefillInformation {
-    proposed_top_up_amount?: bigint;
 }
 export interface MaintenanceRecord {
     maintenanceStatus: Variant_scheduled_completed_overdue;
@@ -147,13 +143,22 @@ export interface SparePart {
     attachment?: ExternalBlob;
     manufacturerPartNo: string;
 }
+export interface AdminRoleInfo {
+    roleType: string;
+    adminPrincipal: Principal;
+    isAdmin: boolean;
+}
+export interface CataloguingRecord {
+    status: Variant_submitted_draft;
+    additionalInformation: string;
+    equipmentNumber: bigint;
+    templateName: string;
+    attributes: Array<[string, string]>;
+    materialDescription: string;
+}
 export interface UserProfile {
     name: string;
     department: string;
-}
-export interface _CaffeineStorageRefillResult {
-    success?: boolean;
-    topped_up_amount?: bigint;
 }
 export enum EngineeringDiscipline {
     mechanical = "mechanical",
@@ -193,6 +198,7 @@ export interface backendInterface {
     deleteSparePartByPartNumber(partNumber: bigint): Promise<boolean>;
     findEquipmentByMatching(searchTerm: string, matchEquipmentNumber: boolean, matchEquipmentTagNumber: boolean, matchName: boolean, matchModel: boolean, matchSerialNumber: boolean): Promise<Array<Equipment>>;
     findSparePartByMatching(searchTerm: string, matchManufacturerPartNo: boolean, matchName: boolean, matchDescription: boolean): Promise<Array<SparePart>>;
+    getAdminRole(caller: Principal): Promise<AdminRoleInfo>;
     getAllCataloguingRecords(equipmentNumber: bigint): Promise<Array<CataloguingRecord>>;
     getAllDocuments(equipmentNumber: bigint): Promise<Array<Document>>;
     getAllEquipment(): Promise<Array<Equipment>>;
@@ -203,6 +209,7 @@ export interface backendInterface {
     getEquipment(equipmentNumber: bigint): Promise<Equipment | null>;
     getSparePartsForEquipment(equipmentNumber: bigint): Promise<Array<SparePart>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
+    importAttributeTemplateFromExcel(blob: ExternalBlob, templateName: string): Promise<string>;
     isCallerAdmin(): Promise<boolean>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     unlinkSparePartFromEquipment(equipmentNumber: bigint, partNumber: bigint): Promise<boolean>;
@@ -437,6 +444,20 @@ export class Backend implements backendInterface {
             return from_candid_vec_n22(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getAdminRole(arg0: Principal): Promise<AdminRoleInfo> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAdminRole(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAdminRole(arg0);
+            return result;
+        }
+    }
     async getAllCataloguingRecords(arg0: bigint): Promise<Array<CataloguingRecord>> {
         if (this.processError) {
             try {
@@ -575,6 +596,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getUserProfile(arg0);
             return from_candid_opt_n38(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async importAttributeTemplateFromExcel(arg0: ExternalBlob, arg1: string): Promise<string> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.importAttributeTemplateFromExcel(await to_candid_ExternalBlob_n10(this._uploadFile, this._downloadFile, arg0), arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.importAttributeTemplateFromExcel(await to_candid_ExternalBlob_n10(this._uploadFile, this._downloadFile, arg0), arg1);
+            return result;
         }
     }
     async isCallerAdmin(): Promise<boolean> {
